@@ -1,0 +1,14 @@
+# Application data — never versioned
+data/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Environment
+.env
+
+# IDE
+.idea/
