@@ -22,3 +22,14 @@ def test_owner_user_is_seeded(tmp_path):
 
     row = conn.execute("SELECT username FROM users WHERE id = 1").fetchone()
     assert row[0] == "owner"
+
+
+def test_get_db_dependency_enables_foreign_keys(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "library.db")
+
+    gen = db.get_db()
+    conn = next(gen)
+    try:
+        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    finally:
+        next(gen, None)  # drive the generator past yield, exercising its own conn.close()

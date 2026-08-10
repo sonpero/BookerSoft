@@ -34,6 +34,12 @@ def db_conn(data_dir: Path):
 @pytest.fixture
 def client(data_dir: Path, books_dir: Path, db_conn):
     app = create_app()
+    # db_conn is shared across every request TestClient makes in this test,
+    # even though each request may run in a different threadpool worker
+    # thread (hence check_same_thread=False in get_connection). This is only
+    # safe because TestClient is synchronous: each client.*() call blocks
+    # until the response completes, so the connection is never touched by
+    # two threads at once. Revisit if a test ever issues concurrent requests.
     app.dependency_overrides[get_db] = lambda: db_conn
     app.dependency_overrides[get_books_dir] = lambda: books_dir
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(id=1, username="owner")

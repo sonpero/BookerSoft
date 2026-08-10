@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BookerSoft</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header>
+<h1>BookerSoft</h1>
+</header>
+
+<main>
+<section id="upload-section">
+<h2>Upload</h2>
+<form id="upload-form">
+<input type="file" id="file-input" multiple accept=".epub,.pdf" />
+<button type="submit">Upload</button>
+</form>
+<ul id="upload-errors" class="errors" hidden></ul>
+</section>
+
+<section id="library-section">
+<h2>Library</h2>
+<p id="empty-state" hidden>No books yet. Upload one above to get started.</p>
+<table id="book-table" hidden>
+<thead>
+<tr>
+<th>Title</th>
+<th>Format</th>
+<th>Size</th>
+<th>Uploaded</th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody id="book-list"></tbody>
+</table>
+</section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
