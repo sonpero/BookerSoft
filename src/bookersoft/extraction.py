@@ -1,3 +1,4 @@
+import html
 import posixpath
 import re
 import sqlite3
@@ -9,7 +10,15 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-METADATA_FIELDS = ("title", "author", "language", "publication_year", "publisher", "isbn")
+METADATA_FIELDS = (
+    "title",
+    "author",
+    "language",
+    "publication_year",
+    "publisher",
+    "isbn",
+    "description",
+)
 
 CONTAINER_NS = {"c": "urn:oasis:names:tc:opendocument:xmlns:container"}
 OPF_NS = {
@@ -34,6 +43,7 @@ class ExtractedMetadata:
     publication_year: int | None = None
     publisher: str | None = None
     isbn: str | None = None
+    description: str | None = None
     cover_bytes: bytes | None = None
     cover_extension: str | None = None
     failed: bool = False
@@ -58,6 +68,18 @@ def _year_from_text(value: str | None) -> int | None:
         return None
     match = re.search(r"\d{4}", value)
     return int(match.group()) if match else None
+
+
+def _strip_html(raw: str | None) -> str | None:
+    """Extraction-time only: descriptions are often HTML and are never
+    rendered as-is, so tags are stripped down to plain text here. Manually
+    edited descriptions are never passed through this function."""
+    if raw is None:
+        return None
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = html.unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or None
 
 
 def extract_epub_metadata(file_path: Path) -> ExtractedMetadata:
@@ -112,6 +134,7 @@ def extract_epub_metadata(file_path: Path) -> ExtractedMetadata:
                 publication_year=_year_from_text(dc_text("date")),
                 publisher=dc_text("publisher"),
                 isbn=isbn,
+                description=_strip_html(dc_text("description")),
                 cover_bytes=cover_bytes,
                 cover_extension=cover_extension,
                 failed=False,
@@ -197,22 +220,10 @@ def apply_extraction(conn: sqlite3.Connection, book_id: int, books_dir: Path, co
     needs_attention = extracted.failed or not final_values["title"] or not final_values["author"]
     search_text = normalize_search_text(final_values["title"], final_values["author"])
 
-    conn.execute(
-        "UPDATE books SET title = ?, author = ?, language = ?, publication_year = ?, "
-        "publisher = ?, isbn = ?, cover_filename = ?, extraction_failed = ?, "
-        "needs_attention = ?, search_text = ? WHERE id = ?",
-        (
-            final_values["title"],
-            final_values["author"],
-            final_values["language"],
-            final_values["publication_year"],
-            final_values["publisher"],
-            final_values["isbn"],
-            cover_filename,
-            extracted.failed,
-            needs_attention,
-            search_text,
-            book_id,
-        ),
-    )
+    set_parts = [f"{field} = ?" for field in METADATA_FIELDS]
+    params = [final_values[field] for field in METADATA_FIELDS]
+    set_parts += ["cover_filename = ?", "extraction_failed = ?", "needs_attention = ?", "search_text = ?"]
+    params += [cover_filename, extracted.failed, needs_attention, search_text, book_id]
+
+    conn.execute(f"UPDATE books SET {', '.join(set_parts)} WHERE id = ?", params)
     conn.commit()

@@ -45,6 +45,29 @@ def test_patch_stores_value_as_is_without_reformatting(client, valid_epub_bytes)
     assert metadata["author"] == "  jane DOE  "
 
 
+def test_patch_updates_description_and_marks_source_manual(client, valid_epub_bytes):
+    book_id = _upload(client, "book.epub", valid_epub_bytes, "application/epub+zip")
+
+    metadata = client.patch(
+        f"/books/{book_id}/metadata", json={"description": "A hand-written summary."}
+    ).json()
+
+    assert metadata["description"] == "A hand-written summary."
+    assert metadata["description_source"] == "manual"
+
+
+def test_patch_description_is_stored_as_is_even_with_html(client, valid_epub_bytes):
+    # HTML stripping is an extraction-time behaviour only; a manual edit is
+    # never auto-reformatted, per project convention.
+    book_id = _upload(client, "book.epub", valid_epub_bytes, "application/epub+zip")
+
+    metadata = client.patch(
+        f"/books/{book_id}/metadata", json={"description": "Has <b>markup</b> on purpose."}
+    ).json()
+
+    assert metadata["description"] == "Has <b>markup</b> on purpose."
+
+
 def test_patch_unknown_book_returns_404(client):
     response = client.patch("/books/999999/metadata", json={"title": "X"})
     assert response.status_code == 404
@@ -76,6 +99,16 @@ def test_reextract_never_overwrites_a_manually_set_field(client, epub_full_metad
     # a field left untouched is still refreshed by the auto extraction
     assert metadata["title"] == "Full Metadata Book"
     assert metadata["title_source"] == "auto"
+
+
+def test_reextract_never_overwrites_a_manually_set_description(client, epub_full_metadata_bytes):
+    book_id = _upload(client, "book.epub", epub_full_metadata_bytes, "application/epub+zip")
+    client.patch(f"/books/{book_id}/metadata", json={"description": "My own summary."})
+
+    metadata = client.post(f"/books/{book_id}/re-extract").json()
+
+    assert metadata["description"] == "My own summary."
+    assert metadata["description_source"] == "manual"
 
 
 def test_reextract_unknown_book_returns_404(client):

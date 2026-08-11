@@ -21,7 +21,8 @@ def test_detail_endpoint_returns_full_metadata(client, epub_full_metadata_bytes)
     assert metadata["id"] == book_id
     assert metadata["original_filename"] == "book.epub"
     assert metadata["format"] == "epub"
-    for field in ("title", "author", "language", "publication_year", "publisher", "isbn"):
+    assert metadata["description"].startswith("A gripping tale of adventure.")
+    for field in ("title", "author", "language", "publication_year", "publisher", "isbn", "description"):
         assert metadata[f"{field}_source"] == "auto"
 
 

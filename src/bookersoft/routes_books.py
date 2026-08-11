@@ -26,7 +26,8 @@ DETAIL_COLUMNS = (
     "id, original_filename, format, size_bytes, uploaded_at, "
     "title, title_source, author, author_source, language, language_source, "
     "publication_year, publication_year_source, publisher, publisher_source, "
-    "isbn, isbn_source, cover_filename, needs_attention, extraction_failed"
+    "isbn, isbn_source, description, description_source, "
+    "cover_filename, needs_attention, extraction_failed"
 )
 
 
@@ -71,6 +72,8 @@ def _row_to_detail(row: sqlite3.Row) -> BookDetail:
         publisher_source=row["publisher_source"],
         isbn=row["isbn"],
         isbn_source=row["isbn_source"],
+        description=row["description"],
+        description_source=row["description_source"],
         has_cover=row["cover_filename"] is not None,
         needs_attention=bool(row["needs_attention"]),
         extraction_failed=bool(row["extraction_failed"]),

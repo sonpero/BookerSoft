@@ -134,3 +134,19 @@ td {
 .field-edit-button {
   font-size: 0.8rem;
 }
+
+#detail-fields dd textarea {
+  width: 100%;
+  max-width: 30rem;
+  font: inherit;
+}
+
+#detail-fields summary {
+  cursor: pointer;
+  color: #555;
+}
+
+#detail-fields details p {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+}

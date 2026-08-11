@@ -20,6 +20,7 @@ const EDITABLE_FIELDS = [
   { key: "publication_year", label: "Year", type: "number" },
   { key: "publisher", label: "Publisher" },
   { key: "isbn", label: "ISBN" },
+  { key: "description", label: "Description", type: "textarea" },
 ];
 
 function formatSize(bytes) {
@@ -180,12 +181,37 @@ function currentDetailBookId() {
   return match ? Number(match[1]) : null;
 }
 
+function descriptionDisplay(description) {
+  if (!description) {
+    const span = document.createElement("span");
+    span.textContent = "—";
+    return span;
+  }
+
+  // Collapsed by default; the text is set via textContent so it is always
+  // rendered as plain text, never as markup, regardless of its source.
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = "Description";
+  details.appendChild(summary);
+
+  const text = document.createElement("p");
+  text.textContent = description;
+  details.appendChild(text);
+
+  return details;
+}
+
 function fieldValueRow(book, field) {
   const dd = document.createElement("dd");
 
-  const valueSpan = document.createElement("span");
-  valueSpan.textContent = fieldValueDisplay(book[field.key]);
-  dd.appendChild(valueSpan);
+  if (field.type === "textarea") {
+    dd.appendChild(descriptionDisplay(book[field.key]));
+  } else {
+    const valueSpan = document.createElement("span");
+    valueSpan.textContent = fieldValueDisplay(book[field.key]);
+    dd.appendChild(valueSpan);
+  }
 
   const sourceSpan = document.createElement("span");
   sourceSpan.className = "field-source";
@@ -206,8 +232,13 @@ function fieldValueRow(book, field) {
 function startFieldEdit(book, field, dd) {
   dd.innerHTML = "";
 
-  const input = document.createElement("input");
-  input.type = field.type === "number" ? "number" : "text";
+  const input =
+    field.type === "textarea" ? document.createElement("textarea") : document.createElement("input");
+  if (field.type === "textarea") {
+    input.rows = 6;
+  } else {
+    input.type = field.type === "number" ? "number" : "text";
+  }
   input.value = book[field.key] ?? "";
   dd.appendChild(input);
 

@@ -51,6 +51,8 @@ class BookDetail(BaseModel):
     publisher_source: MetadataSource
     isbn: str | None
     isbn_source: MetadataSource
+    description: str | None
+    description_source: MetadataSource
     has_cover: bool
     needs_attention: bool
     extraction_failed: bool
@@ -63,3 +65,4 @@ class BookUpdate(BaseModel):
     publication_year: int | None = None
     publisher: str | None = None
     isbn: str | None = None
+    description: str | None = None

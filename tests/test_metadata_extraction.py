@@ -108,6 +108,38 @@ def test_pdf_extraction_failure_does_not_block_upload_and_flags_attention(
     assert metadata["needs_attention"] is True
 
 
+def test_epub_description_is_extracted_with_html_tags_stripped(client, epub_full_metadata_bytes):
+    # the fixture's dc:description is:
+    #   A <b>gripping</b> tale of adventure. Critics called it
+    #   &quot;unputdownable&quot;. <script>alert(1)</script>
+    metadata = _upload_and_get_metadata(
+        client, "book.epub", epub_full_metadata_bytes, "application/epub+zip"
+    )
+
+    assert metadata["description"] == (
+        'A gripping tale of adventure. Critics called it "unputdownable". alert(1)'
+    )
+    assert metadata["description_source"] == "auto"
+    assert "<" not in metadata["description"]
+    assert ">" not in metadata["description"]
+
+
+def test_epub_without_description_leaves_it_empty(client, valid_epub_bytes):
+    metadata = _upload_and_get_metadata(client, "book.epub", valid_epub_bytes, "application/epub+zip")
+
+    assert metadata["description"] is None
+    assert metadata["description_source"] == "auto"
+
+
+def test_pdf_description_is_never_extracted_even_if_subject_is_present(client, pdf_full_metadata_bytes):
+    # pdf_full_metadata_bytes carries a /Subject field on purpose, to prove
+    # it is deliberately ignored rather than merely absent.
+    metadata = _upload_and_get_metadata(client, "book.pdf", pdf_full_metadata_bytes, "application/pdf")
+
+    assert metadata["description"] is None
+    assert metadata["description_source"] == "auto"
+
+
 def test_partial_epub_metadata_flags_attention_when_author_missing(client, valid_epub_bytes):
     # valid_epub_bytes has a title but no dc:creator.
     metadata = _upload_and_get_metadata(client, "book.epub", valid_epub_bytes, "application/epub+zip")

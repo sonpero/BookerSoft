@@ -10,8 +10,9 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 
 ## Current state
 Milestone 2 — done. Extraction (EPUB via stdlib, PDF via pypdf), manual
-editing, re-extraction, detail page and list thumbnails work end to end,
-56 backend tests passing. Next: milestone 3.
+editing, re-extraction, detail page, list thumbnails and description
+(HTML-stripped on extraction, collapsed behind `<details>`) work end to
+end, 62 backend tests passing. Next: milestone 3.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below
@@ -64,6 +65,13 @@ Done when, in the browser:
 
 Detail page
 - A book detail page exists at `/books/{id}`, reachable from the list
+- A `description` field is extracted (EPUB: `dc:description`; PDF: rarely
+  available, leave empty) and shown on the detail page
+- Descriptions often contain HTML: strip tags at extraction time and store
+  plain text. Never render extracted HTML as-is
+- Long descriptions are collapsed behind a native `<details>` disclosure
+- The field is editable like any other, and follows the same
+  extracted-vs-manually-set rule
 
 Extraction
 - On upload, the following are extracted automatically: title, author,

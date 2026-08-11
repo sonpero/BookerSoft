@@ -24,6 +24,8 @@ METADATA_COLUMNS = [
     ("publisher_source", "TEXT NOT NULL DEFAULT 'auto'"),
     ("isbn", "TEXT"),
     ("isbn_source", "TEXT NOT NULL DEFAULT 'auto'"),
+    ("description", "TEXT"),
+    ("description_source", "TEXT NOT NULL DEFAULT 'auto'"),
     ("cover_filename", "TEXT"),
     ("extraction_failed", "INTEGER NOT NULL DEFAULT 0"),
     ("needs_attention", "INTEGER NOT NULL DEFAULT 0"),
