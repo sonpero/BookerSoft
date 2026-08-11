@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 BookFormat = Literal["epub", "pdf"]
 MetadataSource = Literal["auto", "manual"]
@@ -17,6 +17,8 @@ class BookSummary(BaseModel):
     uploaded_at: datetime
     has_cover: bool
     needs_attention: bool
+    average_rating: float | None
+    rating_count: int
 
 
 class UploadedBook(BookSummary):
@@ -56,6 +58,8 @@ class BookDetail(BaseModel):
     has_cover: bool
     needs_attention: bool
     extraction_failed: bool
+    average_rating: float | None
+    rating_count: int
 
 
 class BookUpdate(BaseModel):
@@ -66,3 +70,19 @@ class BookUpdate(BaseModel):
     publisher: str | None = None
     isbn: str | None = None
     description: str | None = None
+
+
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    review_text: str | None = None
+
+
+class ReviewOut(BaseModel):
+    id: int
+    book_id: int
+    user_id: int
+    username: str
+    rating: int
+    review_text: str | None
+    created_at: datetime
+    updated_at: datetime

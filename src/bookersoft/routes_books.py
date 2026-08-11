@@ -27,7 +27,9 @@ DETAIL_COLUMNS = (
     "title, title_source, author, author_source, language, language_source, "
     "publication_year, publication_year_source, publisher, publisher_source, "
     "isbn, isbn_source, description, description_source, "
-    "cover_filename, needs_attention, extraction_failed"
+    "cover_filename, needs_attention, extraction_failed, "
+    "(SELECT AVG(rating) FROM reviews WHERE reviews.book_id = books.id) AS average_rating, "
+    "(SELECT COUNT(*) FROM reviews WHERE reviews.book_id = books.id) AS rating_count"
 )
 
 
@@ -50,6 +52,8 @@ def _row_to_summary(row: sqlite3.Row) -> BookSummary:
         uploaded_at=row["uploaded_at"],
         has_cover=row["cover_filename"] is not None,
         needs_attention=bool(row["needs_attention"]),
+        average_rating=row["average_rating"],
+        rating_count=row["rating_count"],
     )
 
 
@@ -77,6 +81,8 @@ def _row_to_detail(row: sqlite3.Row) -> BookDetail:
         has_cover=row["cover_filename"] is not None,
         needs_attention=bool(row["needs_attention"]),
         extraction_failed=bool(row["extraction_failed"]),
+        average_rating=row["average_rating"],
+        rating_count=row["rating_count"],
     )
 
 

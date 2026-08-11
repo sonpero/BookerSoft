@@ -13,6 +13,14 @@ const detailSection = document.getElementById("detail-section");
 const detailNotFound = document.getElementById("detail-not-found");
 const detailContent = document.getElementById("detail-content");
 
+const reviewsSection = document.getElementById("reviews-section");
+const reviewForm = document.getElementById("review-form");
+const reviewRatingInput = document.getElementById("review-rating-input");
+const reviewTextInput = document.getElementById("review-text-input");
+const reviewDeleteButton = document.getElementById("review-delete-button");
+const reviewsList = document.getElementById("reviews-list");
+const reviewsEmptyState = document.getElementById("reviews-empty-state");
+
 const EDITABLE_FIELDS = [
   { key: "title", label: "Title" },
   { key: "author", label: "Author" },
@@ -37,6 +45,15 @@ function formatSize(bytes) {
 
 function formatDate(isoString) {
   return new Date(isoString).toLocaleString();
+}
+
+function formatRatingSummary(book) {
+  if (book.average_rating === null || book.average_rating === undefined) {
+    return "Not rated yet";
+  }
+  const rounded = Math.round(book.average_rating * 10) / 10;
+  const suffix = book.rating_count === 1 ? "rating" : "ratings";
+  return `${rounded} / 5 (${book.rating_count} ${suffix})`;
 }
 
 function coverElement(book) {
@@ -99,6 +116,10 @@ function renderBooks(books) {
     const dateCell = document.createElement("td");
     dateCell.textContent = formatDate(book.uploaded_at);
     row.appendChild(dateCell);
+
+    const ratingCell = document.createElement("td");
+    ratingCell.textContent = formatRatingSummary(book);
+    row.appendChild(ratingCell);
 
     const downloadCell = document.createElement("td");
     const downloadLink = document.createElement("a");
@@ -281,6 +302,7 @@ function renderDetail(book) {
 
   document.getElementById("detail-title").textContent = book.title;
   document.getElementById("detail-author").textContent = book.author || "Unknown author";
+  document.getElementById("detail-rating-summary").textContent = formatRatingSummary(book);
 
   const attention = document.getElementById("detail-attention");
   if (book.needs_attention) {
@@ -310,12 +332,97 @@ async function loadDetail(bookId) {
   if (response.status === 404) {
     detailNotFound.hidden = false;
     detailContent.hidden = true;
+    reviewsSection.hidden = true;
     return;
   }
 
   const book = await response.json();
   renderDetail(book);
+
+  reviewsSection.hidden = false;
+  await loadReviews(bookId);
+  await loadMyReview(bookId);
 }
+
+// --- Ratings and reviews ---
+
+function formatReviewDate(isoString) {
+  return new Date(isoString).toLocaleDateString();
+}
+
+function renderReviews(reviews) {
+  reviewsList.innerHTML = "";
+  reviewsEmptyState.hidden = reviews.length > 0;
+
+  for (const review of reviews) {
+    const li = document.createElement("li");
+
+    const header = document.createElement("strong");
+    header.textContent = `${review.username} — ${review.rating}/5`;
+    li.appendChild(header);
+
+    const date = document.createElement("span");
+    date.className = "review-date";
+    date.textContent = ` (${formatReviewDate(review.updated_at)})`;
+    li.appendChild(date);
+
+    if (review.review_text) {
+      const text = document.createElement("p");
+      text.textContent = review.review_text;
+      li.appendChild(text);
+    }
+
+    reviewsList.appendChild(li);
+  }
+}
+
+async function loadReviews(bookId) {
+  const response = await fetch(`/books/${bookId}/reviews`);
+  const reviews = await response.json();
+  renderReviews(reviews);
+}
+
+async function loadMyReview(bookId) {
+  const response = await fetch(`/books/${bookId}/review`);
+
+  if (response.status === 404) {
+    reviewForm.reset();
+    reviewDeleteButton.hidden = true;
+    return;
+  }
+
+  const review = await response.json();
+  reviewRatingInput.value = String(review.rating);
+  reviewTextInput.value = review.review_text || "";
+  reviewDeleteButton.hidden = false;
+}
+
+reviewForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const bookId = currentDetailBookId();
+  if (bookId === null) return;
+
+  const reviewText = reviewTextInput.value.trim() === "" ? null : reviewTextInput.value;
+
+  await fetch(`/books/${bookId}/review`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rating: Number(reviewRatingInput.value), review_text: reviewText }),
+  });
+
+  await loadDetail(bookId);
+});
+
+reviewDeleteButton.addEventListener("click", async () => {
+  const bookId = currentDetailBookId();
+  if (bookId === null) return;
+
+  const confirmed = confirm("Delete your rating and review? This cannot be undone.");
+  if (!confirmed) return;
+
+  await fetch(`/books/${bookId}/review`, { method: "DELETE" });
+  await loadDetail(bookId);
+});
 
 document.getElementById("detail-reextract").addEventListener("click", async () => {
   const bookId = currentDetailBookId();

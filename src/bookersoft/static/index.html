@@ -37,6 +37,7 @@ Needs attention only
 <th>Format</th>
 <th>Size</th>
 <th>Uploaded</th>
+<th>Rating</th>
 <th></th>
 <th></th>
 </tr>
@@ -53,6 +54,7 @@ Needs attention only
 <div id="detail-info">
 <h2 id="detail-title"></h2>
 <p id="detail-author"></p>
+<p id="detail-rating-summary"></p>
 <p id="detail-attention" class="attention-banner" hidden></p>
 <div class="detail-actions">
 <a id="detail-download" href="#">Download</a>
@@ -62,6 +64,31 @@ Needs attention only
 <dl id="detail-fields"></dl>
 </div>
 </div>
+
+<section id="reviews-section" hidden>
+<h3>Ratings &amp; reviews</h3>
+<form id="review-form">
+<label>
+Your rating
+<select id="review-rating-input" required>
+<option value="">Select a rating</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+</select>
+</label>
+<label>
+Your review (optional)
+<textarea id="review-text-input" rows="3"></textarea>
+</label>
+<button type="submit">Save rating &amp; review</button>
+<button id="review-delete-button" type="button" hidden>Delete my review</button>
+</form>
+<p id="reviews-empty-state" hidden>No reviews yet.</p>
+<ul id="reviews-list"></ul>
+</section>
 </section>
 </main>
 
