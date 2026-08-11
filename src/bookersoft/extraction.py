@@ -1,4 +1,5 @@
 import html
+import logging
 import posixpath
 import re
 import sqlite3
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pypdf import PdfReader
+
+logger = logging.getLogger(__name__)
 
 METADATA_FIELDS = (
     "title",
@@ -102,30 +105,41 @@ def extract_epub_metadata(file_path: Path) -> ExtractedMetadata:
                     isbn = _text(identifier.text)
                     break
 
-            cover_id = None
-            for meta in metadata_el.findall("opf:meta", OPF_NS):
-                if meta.attrib.get("name") == "cover":
-                    cover_id = meta.attrib.get("content")
-                    break
+            manifest = opf_root.find("opf:manifest", OPF_NS)
+
+            # EPUB 3 declares the cover directly on the manifest item
+            # (properties is a space-separated token list). Fall back to
+            # the EPUB 2 <meta name="cover"> convention if absent.
+            cover_href = None
+            if manifest is not None:
+                for item in manifest.findall("opf:item", OPF_NS):
+                    if "cover-image" in item.attrib.get("properties", "").split():
+                        cover_href = item.attrib.get("href")
+                        break
+
+            if cover_href is None:
+                cover_id = None
+                for meta in metadata_el.findall("opf:meta", OPF_NS):
+                    if meta.attrib.get("name") == "cover":
+                        cover_id = meta.attrib.get("content")
+                        break
+                if cover_id and manifest is not None:
+                    for item in manifest.findall("opf:item", OPF_NS):
+                        if item.attrib.get("id") == cover_id:
+                            cover_href = item.attrib.get("href")
+                            break
 
             cover_bytes = None
             cover_extension = None
-            if cover_id:
-                manifest = opf_root.find("opf:manifest", OPF_NS)
-                href = None
-                for item in manifest.findall("opf:item", OPF_NS):
-                    if item.attrib.get("id") == cover_id:
-                        href = item.attrib.get("href")
-                        break
-                if href:
-                    cover_path = posixpath.normpath(
-                        posixpath.join(posixpath.dirname(opf_path), href)
-                    )
-                    raw = archive.read(cover_path)
-                    detected = detect_image_type(raw)
-                    if detected:
-                        _media_type, cover_extension = detected
-                        cover_bytes = raw
+            if cover_href:
+                cover_path = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(opf_path), cover_href)
+                )
+                raw = archive.read(cover_path)
+                detected = detect_image_type(raw)
+                if detected:
+                    _media_type, cover_extension = detected
+                    cover_bytes = raw
 
             return ExtractedMetadata(
                 title=dc_text("title"),
@@ -140,6 +154,7 @@ def extract_epub_metadata(file_path: Path) -> ExtractedMetadata:
                 failed=False,
             )
     except Exception:
+        logger.exception("EPUB metadata extraction failed for %s", file_path)
         return ExtractedMetadata(failed=True)
 
 

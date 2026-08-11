@@ -37,6 +37,45 @@ def test_epub_cover_is_extracted_and_saved(client, covers_dir, epub_full_metadat
     assert cover_response.content
 
 
+def test_epub2_cover_via_meta_name_cover_is_extracted(client, epub2_cover_meta_bytes):
+    metadata = _upload_and_get_metadata(
+        client, "book.epub", epub2_cover_meta_bytes, "application/epub+zip"
+    )
+
+    assert metadata["has_cover"] is True
+    cover_response = client.get(f"/books/{metadata['id']}/cover")
+    assert cover_response.status_code == 200
+    assert cover_response.headers["content-type"] == "image/jpeg"
+
+
+def test_epub3_cover_via_manifest_properties_is_extracted(client, epub3_cover_properties_bytes):
+    # EPUB 3 declares the cover on the manifest item itself
+    # (properties="cover-image"), with no <meta name="cover"> at all.
+    metadata = _upload_and_get_metadata(
+        client, "book.epub", epub3_cover_properties_bytes, "application/epub+zip"
+    )
+
+    assert metadata["has_cover"] is True
+    cover_response = client.get(f"/books/{metadata['id']}/cover")
+    assert cover_response.status_code == 200
+    assert cover_response.headers["content-type"] == "image/jpeg"
+
+
+def test_epub3_cover_properties_with_multiple_values_is_extracted(
+    client, epub3_cover_properties_multi_bytes
+):
+    # properties is a space-separated token list (e.g. "mathml cover-image
+    # remote-resources"); matching must not require an exact string equal.
+    metadata = _upload_and_get_metadata(
+        client, "book.epub", epub3_cover_properties_multi_bytes, "application/epub+zip"
+    )
+
+    assert metadata["has_cover"] is True
+    cover_response = client.get(f"/books/{metadata['id']}/cover")
+    assert cover_response.status_code == 200
+    assert cover_response.headers["content-type"] == "image/jpeg"
+
+
 def test_book_without_cover_reference_has_no_cover(client, valid_epub_bytes):
     metadata = _upload_and_get_metadata(
         client, "book.epub", valid_epub_bytes, "application/epub+zip"

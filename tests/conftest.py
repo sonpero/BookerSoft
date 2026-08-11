@@ -88,3 +88,18 @@ def epub_missing_opf_bytes() -> bytes:
 @pytest.fixture
 def pdf_full_metadata_bytes() -> bytes:
     return (FIXTURES_DIR / "pdf_full_metadata.pdf").read_bytes()
+
+
+@pytest.fixture
+def epub2_cover_meta_bytes() -> bytes:
+    return (FIXTURES_DIR / "epub2_cover_meta.epub").read_bytes()
+
+
+@pytest.fixture
+def epub3_cover_properties_bytes() -> bytes:
+    return (FIXTURES_DIR / "epub3_cover_properties.epub").read_bytes()
+
+
+@pytest.fixture
+def epub3_cover_properties_multi_bytes() -> bytes:
+    return (FIXTURES_DIR / "epub3_cover_properties_multi.epub").read_bytes()
