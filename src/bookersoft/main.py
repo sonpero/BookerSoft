@@ -1,12 +1,9 @@
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from bookersoft.config import STATIC_DIR
 from bookersoft.routes_books import router as books_router
-
-STATIC_DIR = Path(__file__).parent / "static"
 
 
 def create_app() -> FastAPI:

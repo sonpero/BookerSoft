@@ -6,12 +6,28 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from bookersoft.config import get_books_dir
+from bookersoft.config import STATIC_DIR, get_books_dir, get_covers_dir
 from bookersoft.db import get_db
 from bookersoft.deps import CurrentUser, get_current_user
-from bookersoft.models import BookFormat, BookOut, RejectedFile, UploadedBook, UploadResponse
+from bookersoft.extraction import apply_extraction, normalize_search_text
+from bookersoft.models import (
+    BookDetail,
+    BookFormat,
+    BookSummary,
+    BookUpdate,
+    RejectedFile,
+    UploadedBook,
+    UploadResponse,
+)
 
 router = APIRouter(prefix="/books", tags=["books"])
+
+DETAIL_COLUMNS = (
+    "id, original_filename, format, size_bytes, uploaded_at, "
+    "title, title_source, author, author_source, language, language_source, "
+    "publication_year, publication_year_source, publisher, publisher_source, "
+    "isbn, isbn_source, cover_filename, needs_attention, extraction_failed"
+)
 
 
 def _detect_format(content: bytes) -> BookFormat | None:
@@ -22,12 +38,52 @@ def _detect_format(content: bytes) -> BookFormat | None:
     return None
 
 
+def _row_to_summary(row: sqlite3.Row) -> BookSummary:
+    return BookSummary(
+        id=row["id"],
+        original_filename=row["original_filename"],
+        title=row["title"] or row["original_filename"],
+        author=row["author"],
+        format=row["format"],
+        size_bytes=row["size_bytes"],
+        uploaded_at=row["uploaded_at"],
+        has_cover=row["cover_filename"] is not None,
+        needs_attention=bool(row["needs_attention"]),
+    )
+
+
+def _row_to_detail(row: sqlite3.Row) -> BookDetail:
+    return BookDetail(
+        id=row["id"],
+        original_filename=row["original_filename"],
+        format=row["format"],
+        size_bytes=row["size_bytes"],
+        uploaded_at=row["uploaded_at"],
+        title=row["title"] or row["original_filename"],
+        title_source=row["title_source"],
+        author=row["author"],
+        author_source=row["author_source"],
+        language=row["language"],
+        language_source=row["language_source"],
+        publication_year=row["publication_year"],
+        publication_year_source=row["publication_year_source"],
+        publisher=row["publisher"],
+        publisher_source=row["publisher_source"],
+        isbn=row["isbn"],
+        isbn_source=row["isbn_source"],
+        has_cover=row["cover_filename"] is not None,
+        needs_attention=bool(row["needs_attention"]),
+        extraction_failed=bool(row["extraction_failed"]),
+    )
+
+
 @router.post("", response_model=UploadResponse, status_code=201)
 def upload_books(
     files: list[UploadFile] = File(...),
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
     books_dir: Path = Depends(get_books_dir),
+    covers_dir: Path = Depends(get_covers_dir),
 ) -> UploadResponse:
     uploaded: list[UploadedBook] = []
     rejected: list[RejectedFile] = []
@@ -43,13 +99,13 @@ def upload_books(
 
         sha256 = hashlib.sha256(content).hexdigest()
         existing = db.execute(
-            "SELECT id, original_filename, format, size_bytes, uploaded_at "
-            "FROM books WHERE sha256 = ?",
-            (sha256,),
+            f"SELECT {DETAIL_COLUMNS} FROM books WHERE sha256 = ?", (sha256,)
         ).fetchone()
 
         if existing is not None:
-            uploaded.append(UploadedBook(**dict(existing), duplicate=True))
+            uploaded.append(
+                UploadedBook(**_row_to_summary(existing).model_dump(), duplicate=True)
+            )
             continue
 
         stored_filename = f"{sha256}.{book_format}"
@@ -62,25 +118,31 @@ def upload_books(
         )
         db.commit()
 
+        apply_extraction(db, cursor.lastrowid, books_dir, covers_dir)
+
         row = db.execute(
-            "SELECT id, original_filename, format, size_bytes, uploaded_at FROM books WHERE id = ?",
-            (cursor.lastrowid,),
+            f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (cursor.lastrowid,)
         ).fetchone()
-        uploaded.append(UploadedBook(**dict(row), duplicate=False))
+        uploaded.append(UploadedBook(**_row_to_summary(row).model_dump(), duplicate=False))
 
     return UploadResponse(uploaded=uploaded, rejected=rejected)
 
 
-@router.get("", response_model=list[BookOut])
+@router.get("", response_model=list[BookSummary])
 def list_books(
+    needs_attention: bool | None = None,
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
-) -> list[BookOut]:
-    rows = db.execute(
-        "SELECT id, original_filename, format, size_bytes, uploaded_at "
-        "FROM books ORDER BY uploaded_at DESC, id DESC"
-    ).fetchall()
-    return [BookOut(**dict(row)) for row in rows]
+) -> list[BookSummary]:
+    query = f"SELECT {DETAIL_COLUMNS} FROM books"
+    params: list[object] = []
+    if needs_attention is not None:
+        query += " WHERE needs_attention = ?"
+        params.append(1 if needs_attention else 0)
+    query += " ORDER BY uploaded_at DESC, id DESC"
+
+    rows = db.execute(query, params).fetchall()
+    return [_row_to_summary(row) for row in rows]
 
 
 @router.get("/{book_id}/file")
@@ -117,14 +179,107 @@ def download_book(
     )
 
 
+@router.get("/{book_id}/cover")
+def book_cover(
+    book_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+    covers_dir: Path = Depends(get_covers_dir),
+) -> FileResponse:
+    row = db.execute("SELECT cover_filename FROM books WHERE id = ?", (book_id,)).fetchone()
+    if row is None or row["cover_filename"] is None:
+        raise HTTPException(status_code=404, detail="This book has no cover")
+
+    cover_path = covers_dir / row["cover_filename"]
+    media_type = "image/png" if cover_path.suffix == ".png" else "image/jpeg"
+    return FileResponse(path=cover_path, media_type=media_type)
+
+
+@router.get("/{book_id}/metadata", response_model=BookDetail)
+def get_book_metadata(
+    book_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+) -> BookDetail:
+    row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return _row_to_detail(row)
+
+
+@router.patch("/{book_id}/metadata", response_model=BookDetail)
+def update_book_metadata(
+    book_id: int,
+    payload: BookUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+) -> BookDetail:
+    row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    if updates:
+        set_parts: list[str] = []
+        params: list[object] = []
+        for field, value in updates.items():
+            set_parts.append(f"{field} = ?")
+            params.append(value)
+            set_parts.append(f"{field}_source = ?")
+            params.append("manual")
+
+        merged = dict(row)
+        merged.update(updates)
+        needs_attention = bool(merged["extraction_failed"]) or not merged["title"] or not merged["author"]
+        search_text = normalize_search_text(merged["title"], merged["author"])
+        set_parts += ["needs_attention = ?", "search_text = ?"]
+        params += [needs_attention, search_text]
+
+        params.append(book_id)
+        db.execute(f"UPDATE books SET {', '.join(set_parts)} WHERE id = ?", params)
+        db.commit()
+
+    updated_row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
+    return _row_to_detail(updated_row)
+
+
+@router.post("/{book_id}/re-extract", response_model=BookDetail)
+def re_extract_book(
+    book_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db),
+    books_dir: Path = Depends(get_books_dir),
+    covers_dir: Path = Depends(get_covers_dir),
+) -> BookDetail:
+    row = db.execute("SELECT id FROM books WHERE id = ?", (book_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    apply_extraction(db, book_id, books_dir, covers_dir)
+
+    updated_row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
+    return _row_to_detail(updated_row)
+
+
+@router.get("/{book_id}")
+def book_detail_page(book_id: int) -> FileResponse:
+    # Always serve the SPA shell, even for an unknown id: the page's own JS
+    # fetches /books/{id}/metadata and renders the "not found" state itself,
+    # rather than the browser showing a raw JSON error response.
+    return FileResponse(STATIC_DIR / "index.html")
+
+
 @router.delete("/{book_id}", status_code=204)
 def delete_book(
     book_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
     books_dir: Path = Depends(get_books_dir),
+    covers_dir: Path = Depends(get_covers_dir),
 ) -> None:
-    row = db.execute("SELECT stored_filename FROM books WHERE id = ?", (book_id,)).fetchone()
+    row = db.execute(
+        "SELECT stored_filename, cover_filename FROM books WHERE id = ?", (book_id,)
+    ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Book not found")
 
@@ -132,3 +287,5 @@ def delete_book(
     db.commit()
 
     (books_dir / row["stored_filename"]).unlink(missing_ok=True)
+    if row["cover_filename"]:
+        (covers_dir / row["cover_filename"]).unlink(missing_ok=True)

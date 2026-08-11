@@ -9,7 +9,9 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 - Env management: uv
 
 ## Current state
-Milestone 0 — empty repo
+Milestone 2 — done. Extraction (EPUB via stdlib, PDF via pypdf), manual
+editing, re-extraction, detail page and list thumbnails work end to end,
+56 backend tests passing. Next: milestone 3.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below

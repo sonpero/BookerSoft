@@ -23,10 +23,16 @@
 
 <section id="library-section">
 <h2>Library</h2>
+<label id="attention-filter-label">
+<input type="checkbox" id="attention-filter" />
+Needs attention only
+</label>
 <p id="empty-state" hidden>No books yet. Upload one above to get started.</p>
+<p id="no-match-state" hidden>No book matches this filter.</p>
 <table id="book-table" hidden>
 <thead>
 <tr>
+<th></th>
 <th>Title</th>
 <th>Format</th>
 <th>Size</th>
@@ -37,6 +43,25 @@
 </thead>
 <tbody id="book-list"></tbody>
 </table>
+</section>
+
+<section id="detail-section" hidden>
+<a href="/" id="back-to-library">&larr; Library</a>
+<p id="detail-not-found" hidden>Book not found.</p>
+<div id="detail-content" hidden>
+<div id="detail-cover"></div>
+<div id="detail-info">
+<h2 id="detail-title"></h2>
+<p id="detail-author"></p>
+<p id="detail-attention" class="attention-banner" hidden></p>
+<div class="detail-actions">
+<a id="detail-download" href="#">Download</a>
+<button id="detail-reextract" type="button">Re-extract metadata</button>
+<button id="detail-delete" type="button">Delete</button>
+</div>
+<dl id="detail-fields"></dl>
+</div>
+</div>
 </section>
 </main>
 

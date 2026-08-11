@@ -33,3 +33,104 @@ td {
 .errors {
   color: #b00020;
 }
+
+#attention-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: var(--gap);
+  font-size: 0.9rem;
+}
+
+.cover-thumb,
+.cover-placeholder {
+  width: 2.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+}
+
+.cover-placeholder {
+  background: #e2e2e2;
+  color: #8a8a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.attention-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  background: #fff3cd;
+  color: #7a5b00;
+  border: 1px solid #e6c568;
+}
+
+#back-to-library {
+  display: inline-block;
+  margin-bottom: var(--gap);
+}
+
+#detail-content:not([hidden]) {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+#detail-cover .cover-thumb,
+#detail-cover .cover-placeholder {
+  width: 12rem;
+  height: 17rem;
+  font-size: 3rem;
+}
+
+#detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attention-banner {
+  background: #fff3cd;
+  color: #7a5b00;
+  border: 1px solid #e6c568;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+#detail-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+
+#detail-fields dt {
+  font-weight: 600;
+  color: #555;
+}
+
+#detail-fields dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-source {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.field-edit-button {
+  font-size: 0.8rem;
+}
