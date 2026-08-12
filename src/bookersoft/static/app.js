@@ -6,6 +6,12 @@ const bookList = document.getElementById("book-list");
 const emptyState = document.getElementById("empty-state");
 const noMatchState = document.getElementById("no-match-state");
 const attentionFilter = document.getElementById("attention-filter");
+const searchInput = document.getElementById("search-input");
+const formatFilter = document.getElementById("format-filter");
+const minRatingFilter = document.getElementById("min-rating-filter");
+const uploaderFilter = document.getElementById("uploader-filter");
+const sortSelect = document.getElementById("sort-select");
+const clearFiltersButton = document.getElementById("clear-filters-button");
 
 const uploadSection = document.getElementById("upload-section");
 const librarySection = document.getElementById("library-section");
@@ -74,7 +80,7 @@ function renderBooks(books) {
   bookList.innerHTML = "";
 
   if (books.length === 0) {
-    const filtered = attentionFilter.checked;
+    const filtered = hasActiveFilters(currentFilters());
     emptyState.hidden = filtered;
     noMatchState.hidden = !filtered;
     bookTable.hidden = true;
@@ -140,12 +146,113 @@ function renderBooks(books) {
   }
 }
 
+// --- Search, filters, sort and URL state ---
+
+function currentFilters() {
+  return {
+    q: searchInput.value.trim(),
+    format: formatFilter.value,
+    min_rating: minRatingFilter.value,
+    uploaded_by: uploaderFilter.value,
+    sort: sortSelect.value,
+    needs_attention: attentionFilter.checked,
+  };
+}
+
+function buildQueryString(filters) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.format) params.set("format", filters.format);
+  if (filters.min_rating) params.set("min_rating", filters.min_rating);
+  if (filters.uploaded_by) params.set("uploaded_by", filters.uploaded_by);
+  if (filters.sort && filters.sort !== "recent") params.set("sort", filters.sort);
+  if (filters.needs_attention) params.set("needs_attention", "true");
+  return params.toString();
+}
+
+function hasActiveFilters(filters) {
+  return Boolean(
+    filters.q ||
+      filters.format ||
+      filters.min_rating ||
+      filters.uploaded_by ||
+      filters.needs_attention ||
+      (filters.sort && filters.sort !== "recent")
+  );
+}
+
+function filtersFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    q: params.get("q") || "",
+    format: params.get("format") || "",
+    min_rating: params.get("min_rating") || "",
+    uploaded_by: params.get("uploaded_by") || "",
+    sort: params.get("sort") || "recent",
+    needs_attention: params.get("needs_attention") === "true",
+  };
+}
+
+function applyFiltersToControls(filters) {
+  searchInput.value = filters.q;
+  formatFilter.value = filters.format;
+  minRatingFilter.value = filters.min_rating;
+  uploaderFilter.value = filters.uploaded_by;
+  sortSelect.value = filters.sort;
+  attentionFilter.checked = filters.needs_attention;
+}
+
+async function loadUsers() {
+  const response = await fetch("/users");
+  const users = await response.json();
+
+  const previousValue = uploaderFilter.value;
+  uploaderFilter.innerHTML = '<option value="">Everyone</option>';
+  for (const user of users) {
+    const option = document.createElement("option");
+    option.value = String(user.id);
+    option.textContent = user.username;
+    uploaderFilter.appendChild(option);
+  }
+  uploaderFilter.value = previousValue;
+}
+
 async function loadBooks() {
-  const query = attentionFilter.checked ? "?needs_attention=true" : "";
-  const response = await fetch(`/books${query}`);
+  const query = buildQueryString(currentFilters());
+  const response = await fetch(`/books${query ? `?${query}` : ""}`);
   const books = await response.json();
   renderBooks(books);
 }
+
+async function syncURLAndReload() {
+  const filters = currentFilters();
+  const query = buildQueryString(filters);
+  history.replaceState(null, "", query ? `/?${query}` : "/");
+  clearFiltersButton.hidden = !hasActiveFilters(filters);
+  await loadBooks();
+}
+
+async function initLibraryView() {
+  await loadUsers();
+  applyFiltersToControls(filtersFromURL());
+  clearFiltersButton.hidden = !hasActiveFilters(currentFilters());
+  await loadBooks();
+}
+
+let searchDebounceTimer = null;
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(syncURLAndReload, 250);
+});
+
+for (const control of [formatFilter, minRatingFilter, uploaderFilter, sortSelect, attentionFilter]) {
+  control.addEventListener("change", syncURLAndReload);
+}
+
+clearFiltersButton.addEventListener("click", () => {
+  applyFiltersToControls({ q: "", format: "", min_rating: "", uploaded_by: "", sort: "recent", needs_attention: false });
+  syncURLAndReload();
+});
 
 async function deleteBook(book) {
   const confirmed = confirm(`Delete "${book.title}"? This cannot be undone.`);
@@ -188,8 +295,6 @@ form.addEventListener("submit", async (event) => {
   form.reset();
   await loadBooks();
 });
-
-attentionFilter.addEventListener("change", loadBooks);
 
 // --- Book detail page ---
 
@@ -456,7 +561,7 @@ function route() {
   uploadSection.hidden = false;
   librarySection.hidden = false;
   detailSection.hidden = true;
-  loadBooks();
+  initLibraryView();
 }
 
 route();

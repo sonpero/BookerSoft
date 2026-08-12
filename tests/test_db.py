@@ -84,10 +84,11 @@ def test_pre_milestone2_books_are_backfilled_with_metadata_on_next_init(tmp_path
     db.init_db(conn, books_dir=books_dir, covers_dir=covers_dir)
 
     row = conn.execute(
-        "SELECT title, title_source, author, cover_filename FROM books"
+        "SELECT title, title_source, author, cover_filename, search_text FROM books"
     ).fetchone()
     assert row["title"] == "Full Metadata Book"
     assert row["title_source"] == "auto"
     assert row["author"] == "Jane Doe"
     assert row["cover_filename"] is not None
     assert (covers_dir / row["cover_filename"]).exists()
+    assert row["search_text"] == "full metadata book jane doe"

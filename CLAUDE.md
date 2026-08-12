@@ -9,10 +9,13 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 - Env management: uv
 
 ## Current state
-Milestone 3 — done. Ratings and reviews: set/update/delete my own review
-(upsert on `UNIQUE(user_id, book_id)`), average rating and review count
-shown on the detail page and in the list, reviews cascade-deleted with
-their book, 82 backend tests passing. Next: milestone 4.
+Milestone 4 — done. Search and filters: a single search box matches title
+and author, case- and accent-insensitive, against a normalized
+`search_text` column maintained on insert, manual edit and re-extraction
+(and backfilled for pre-existing books on migration); combinable filters
+for format, minimum average rating, needs-attention and uploader; sort by
+recently added, title, author or average rating; current search/filters
+live in the URL query string. 102 backend tests passing. Next: milestone 5.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below

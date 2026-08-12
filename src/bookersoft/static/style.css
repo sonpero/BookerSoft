@@ -34,12 +34,44 @@ td {
   color: #b00020;
 }
 
+#filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: var(--gap);
+}
+
+#filter-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+#search-input {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  align-self: stretch;
+}
+
+#filter-bar select {
+  font: inherit;
+  padding: 0.3rem;
+}
+
 #attention-filter-label {
-  display: inline-flex;
+  flex-direction: row !important;
   align-items: center;
   gap: 0.35rem;
-  margin-bottom: var(--gap);
   font-size: 0.9rem;
+}
+
+#clear-filters-button {
+  font-size: 0.85rem;
 }
 
 .cover-thumb,

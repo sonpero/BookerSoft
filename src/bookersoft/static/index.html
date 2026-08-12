@@ -23,12 +23,50 @@
 
 <section id="library-section">
 <h2>Library</h2>
+<div id="filter-bar">
+<input type="search" id="search-input" placeholder="Search by title or author" aria-label="Search" />
+<label>
+Format
+<select id="format-filter">
+<option value="">All</option>
+<option value="epub">EPUB</option>
+<option value="pdf">PDF</option>
+</select>
+</label>
+<label>
+Min. rating
+<select id="min-rating-filter">
+<option value="">Any</option>
+<option value="1">1+</option>
+<option value="2">2+</option>
+<option value="3">3+</option>
+<option value="4">4+</option>
+<option value="5">5</option>
+</select>
+</label>
+<label>
+Uploaded by
+<select id="uploader-filter">
+<option value="">Everyone</option>
+</select>
+</label>
 <label id="attention-filter-label">
 <input type="checkbox" id="attention-filter" />
 Needs attention only
 </label>
+<label>
+Sort by
+<select id="sort-select">
+<option value="recent">Recently added</option>
+<option value="title">Title</option>
+<option value="author">Author</option>
+<option value="rating">Average rating</option>
+</select>
+</label>
+<button type="button" id="clear-filters-button" hidden>Clear filters</button>
+</div>
 <p id="empty-state" hidden>No books yet. Upload one above to get started.</p>
-<p id="no-match-state" hidden>No book matches this filter.</p>
+<p id="no-match-state" hidden>No book matches these filters.</p>
 <table id="book-table" hidden>
 <thead>
 <tr>

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 BookFormat = Literal["epub", "pdf"]
 MetadataSource = Literal["auto", "manual"]
+SortOption = Literal["recent", "title", "author", "rating"]
 
 
 class BookSummary(BaseModel):
@@ -86,3 +87,8 @@ class ReviewOut(BaseModel):
     review_text: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str

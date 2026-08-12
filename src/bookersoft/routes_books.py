@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from bookersoft.config import STATIC_DIR, get_books_dir, get_covers_dir
@@ -16,6 +16,7 @@ from bookersoft.models import (
     BookSummary,
     BookUpdate,
     RejectedFile,
+    SortOption,
     UploadedBook,
     UploadResponse,
 )
@@ -31,6 +32,23 @@ DETAIL_COLUMNS = (
     "(SELECT AVG(rating) FROM reviews WHERE reviews.book_id = books.id) AS average_rating, "
     "(SELECT COUNT(*) FROM reviews WHERE reviews.book_id = books.id) AS rating_count"
 )
+
+# search_text and user_id aren't part of BookSummary/BookDetail, but are
+# needed to filter/sort the list query; selecting them from a subquery makes
+# them, like average_rating and rating_count, addressable in an outer WHERE
+# and ORDER BY (aliases from the SELECT list aren't visible there directly).
+LIST_COLUMNS = DETAIL_COLUMNS + ", search_text, user_id"
+
+ORDER_BY_CLAUSES: dict[SortOption, str] = {
+    "recent": "uploaded_at DESC, id DESC",
+    "title": "title COLLATE NOCASE ASC, id DESC",
+    "author": "author COLLATE NOCASE ASC, id DESC",
+    "rating": "average_rating IS NULL, average_rating DESC, id DESC",
+}
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _detect_format(content: bytes) -> BookFormat | None:
@@ -140,15 +158,37 @@ def upload_books(
 @router.get("", response_model=list[BookSummary])
 def list_books(
     needs_attention: bool | None = None,
+    q: str | None = None,
+    format: BookFormat | None = None,
+    min_rating: float | None = Query(default=None, ge=1, le=5),
+    uploaded_by: int | None = None,
+    sort: SortOption = "recent",
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
 ) -> list[BookSummary]:
-    query = f"SELECT {DETAIL_COLUMNS} FROM books"
+    conditions: list[str] = []
     params: list[object] = []
+
     if needs_attention is not None:
-        query += " WHERE needs_attention = ?"
+        conditions.append("needs_attention = ?")
         params.append(1 if needs_attention else 0)
-    query += " ORDER BY uploaded_at DESC, id DESC"
+    if q:
+        conditions.append("search_text LIKE ? ESCAPE '\\'")
+        params.append(f"%{_escape_like(normalize_search_text(q))}%")
+    if format is not None:
+        conditions.append("format = ?")
+        params.append(format)
+    if min_rating is not None:
+        conditions.append("average_rating IS NOT NULL AND average_rating >= ?")
+        params.append(min_rating)
+    if uploaded_by is not None:
+        conditions.append("user_id = ?")
+        params.append(uploaded_by)
+
+    query = f"SELECT * FROM (SELECT {LIST_COLUMNS} FROM books)"
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    query += f" ORDER BY {ORDER_BY_CLAUSES[sort]}"
 
     rows = db.execute(query, params).fetchall()
     return [_row_to_summary(row) for row in rows]
