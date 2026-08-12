@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from bookersoft.config import STATIC_DIR, get_books_dir, get_covers_dir
 from bookersoft.db import get_db
-from bookersoft.deps import CurrentUser, get_current_user
+from bookersoft.deps import CurrentUser, get_current_user, require_page_session
 from bookersoft.extraction import apply_extraction, normalize_search_text
 from bookersoft.models import (
     BookDetail,
@@ -311,7 +311,9 @@ def re_extract_book(
 
 
 @router.get("/{book_id}")
-def book_detail_page(book_id: int) -> FileResponse:
+def book_detail_page(
+    book_id: int, current_user: CurrentUser = Depends(require_page_session)
+) -> FileResponse:
     # Always serve the SPA shell, even for an unknown id: the page's own JS
     # fetches /books/{id}/metadata and renders the "not found" state itself,
     # rather than the browser showing a raw JSON error response.
@@ -327,10 +329,13 @@ def delete_book(
     covers_dir: Path = Depends(get_covers_dir),
 ) -> None:
     row = db.execute(
-        "SELECT stored_filename, cover_filename FROM books WHERE id = ?", (book_id,)
+        "SELECT stored_filename, cover_filename, user_id FROM books WHERE id = ?", (book_id,)
     ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Book not found")
+
+    if not (current_user.is_owner or row["user_id"] == current_user.id):
+        raise HTTPException(status_code=403, detail="Not allowed to delete this book")
 
     db.execute("DELETE FROM books WHERE id = ?", (book_id,))
     db.commit()

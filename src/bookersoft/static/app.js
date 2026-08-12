@@ -1,3 +1,14 @@
+// Wraps fetch() to redirect to /login on 401: the server already redirects
+// unauthenticated page loads itself, so this only ever fires for a session
+// that expires while the app is already open.
+async function apiFetch(url, options) {
+  const response = await fetch(url, options);
+  if (response.status === 401) {
+    window.location.href = "/login";
+  }
+  return response;
+}
+
 const form = document.getElementById("upload-form");
 const fileInput = document.getElementById("file-input");
 const uploadErrors = document.getElementById("upload-errors");
@@ -203,7 +214,7 @@ function applyFiltersToControls(filters) {
 }
 
 async function loadUsers() {
-  const response = await fetch("/users");
+  const response = await apiFetch("/users");
   const users = await response.json();
 
   const previousValue = uploaderFilter.value;
@@ -219,7 +230,7 @@ async function loadUsers() {
 
 async function loadBooks() {
   const query = buildQueryString(currentFilters());
-  const response = await fetch(`/books${query ? `?${query}` : ""}`);
+  const response = await apiFetch(`/books${query ? `?${query}` : ""}`);
   const books = await response.json();
   renderBooks(books);
 }
@@ -258,7 +269,7 @@ async function deleteBook(book) {
   const confirmed = confirm(`Delete "${book.title}"? This cannot be undone.`);
   if (!confirmed) return;
 
-  await fetch(`/books/${book.id}`, { method: "DELETE" });
+  await apiFetch(`/books/${book.id}`, { method: "DELETE" });
   await loadBooks();
 }
 
@@ -288,7 +299,7 @@ form.addEventListener("submit", async (event) => {
     formData.append("files", file);
   }
 
-  const response = await fetch("/books", { method: "POST", body: formData });
+  const response = await apiFetch("/books", { method: "POST", body: formData });
   const result = await response.json();
 
   renderUploadErrors(result.rejected);
@@ -389,7 +400,7 @@ async function saveField(bookId, field, rawValue) {
     value = Number(value);
   }
 
-  await fetch(`/books/${bookId}/metadata`, {
+  await apiFetch(`/books/${bookId}/metadata`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ [field.key]: value }),
@@ -432,7 +443,7 @@ function renderDetail(book) {
 }
 
 async function loadDetail(bookId) {
-  const response = await fetch(`/books/${bookId}/metadata`);
+  const response = await apiFetch(`/books/${bookId}/metadata`);
 
   if (response.status === 404) {
     detailNotFound.hidden = false;
@@ -482,13 +493,13 @@ function renderReviews(reviews) {
 }
 
 async function loadReviews(bookId) {
-  const response = await fetch(`/books/${bookId}/reviews`);
+  const response = await apiFetch(`/books/${bookId}/reviews`);
   const reviews = await response.json();
   renderReviews(reviews);
 }
 
 async function loadMyReview(bookId) {
-  const response = await fetch(`/books/${bookId}/review`);
+  const response = await apiFetch(`/books/${bookId}/review`);
 
   if (response.status === 404) {
     reviewForm.reset();
@@ -509,7 +520,7 @@ reviewForm.addEventListener("submit", async (event) => {
 
   const reviewText = reviewTextInput.value.trim() === "" ? null : reviewTextInput.value;
 
-  await fetch(`/books/${bookId}/review`, {
+  await apiFetch(`/books/${bookId}/review`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rating: Number(reviewRatingInput.value), review_text: reviewText }),
@@ -525,13 +536,13 @@ reviewDeleteButton.addEventListener("click", async () => {
   const confirmed = confirm("Delete your rating and review? This cannot be undone.");
   if (!confirmed) return;
 
-  await fetch(`/books/${bookId}/review`, { method: "DELETE" });
+  await apiFetch(`/books/${bookId}/review`, { method: "DELETE" });
   await loadDetail(bookId);
 });
 
 document.getElementById("detail-reextract").addEventListener("click", async () => {
   const bookId = currentDetailBookId();
-  await fetch(`/books/${bookId}/re-extract`, { method: "POST" });
+  await apiFetch(`/books/${bookId}/re-extract`, { method: "POST" });
   await loadDetail(bookId);
 });
 
@@ -541,13 +552,30 @@ document.getElementById("detail-delete").addEventListener("click", async () => {
   const confirmed = confirm(`Delete "${title}"? This cannot be undone.`);
   if (!confirmed) return;
 
-  await fetch(`/books/${bookId}`, { method: "DELETE" });
+  await apiFetch(`/books/${bookId}`, { method: "DELETE" });
   window.location.href = "/";
+});
+
+// --- Current user and logout ---
+
+async function loadCurrentUser() {
+  const response = await apiFetch("/me");
+  if (!response.ok) return;
+
+  const user = await response.json();
+  document.getElementById("current-username").textContent = user.username;
+}
+
+document.getElementById("logout-button").addEventListener("click", async () => {
+  await fetch("/logout", { method: "POST" });
+  window.location.href = "/login";
 });
 
 // --- Routing ---
 
 function route() {
+  loadCurrentUser();
+
   const bookId = currentDetailBookId();
 
   if (bookId !== null) {

@@ -32,6 +32,15 @@ METADATA_COLUMNS = [
     ("search_text", "TEXT NOT NULL DEFAULT ''"),
 ]
 
+# password_hash is nullable: a user row can exist (e.g. the seeded 'owner')
+# before the CLI has ever set a password for it, and login simply refuses
+# such an account rather than crashing. is_owner is only ever written by the
+# CLI (bookersoft.cli), never by an API route.
+USER_COLUMNS = [
+    ("password_hash", "TEXT"),
+    ("is_owner", "INTEGER NOT NULL DEFAULT 0"),
+]
+
 
 # SQLite disables foreign key enforcement by default per connection.
 def get_connection(db_path: Path) -> sqlite3.Connection:
@@ -52,11 +61,20 @@ def _ensure_metadata_columns(conn: sqlite3.Connection) -> bool:
     return added_any
 
 
+def _ensure_user_columns(conn: sqlite3.Connection) -> None:
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    for name, ddl in USER_COLUMNS:
+        if name not in existing:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {name} {ddl}")
+    conn.execute("UPDATE users SET is_owner = 1 WHERE username = 'owner' AND is_owner = 0")
+
+
 def init_db(
     conn: sqlite3.Connection, books_dir: Path | None = None, covers_dir: Path | None = None
 ) -> None:
     conn.executescript(SCHEMA_PATH.read_text())
     just_migrated = _ensure_metadata_columns(conn)
+    _ensure_user_columns(conn)
     conn.commit()
 
     if just_migrated and books_dir is not None and covers_dir is not None:

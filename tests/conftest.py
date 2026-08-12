@@ -1,9 +1,16 @@
+import os
+
+# Must be set before bookersoft.config (and anything importing it) loads for
+# the first time, since it reads the env var at module import time.
+os.environ.setdefault("SESSION_SECRET", "test-secret-not-for-production")
+
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from bookersoft import db
+from bookersoft.auth import hash_password
 from bookersoft.config import get_books_dir, get_covers_dir
 from bookersoft.deps import CurrentUser, get_current_user
 from bookersoft.db import get_db
@@ -49,10 +56,80 @@ def client(data_dir: Path, books_dir: Path, covers_dir: Path, db_conn):
     app.dependency_overrides[get_db] = lambda: db_conn
     app.dependency_overrides[get_books_dir] = lambda: books_dir
     app.dependency_overrides[get_covers_dir] = lambda: covers_dir
-    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id=1, username="owner")
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        id=1, username="owner", is_owner=True
+    )
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def auth_client(data_dir: Path, books_dir: Path, covers_dir: Path, db_conn):
+    # Unlike `client`, this does NOT override get_current_user: requests go
+    # through the real cookie-based session resolution, for tests that need
+    # to exercise login/logout/multi-user behaviour itself.
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: db_conn
+    app.dependency_overrides[get_books_dir] = lambda: books_dir
+    app.dependency_overrides[get_covers_dir] = lambda: covers_dir
+
+    # https base_url: the session cookie is Secure, so httpx's cookie jar
+    # would silently drop it on subsequent requests over a plain http:// test
+    # origin (this is real production behaviour to preserve, not to work around).
+    with TestClient(app, base_url="https://testserver") as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def create_user(db_conn):
+    """Create or update a user with a real password hash, bypassing the CLI."""
+
+    def _create(username: str, password: str, is_owner: bool = False) -> int:
+        password_hash = hash_password(password)
+        existing = db_conn.execute(
+            "SELECT id FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if existing is None:
+            cursor = db_conn.execute(
+                "INSERT INTO users (username, password_hash, is_owner) VALUES (?, ?, ?)",
+                (username, password_hash, int(is_owner)),
+            )
+            user_id = cursor.lastrowid
+        else:
+            db_conn.execute(
+                "UPDATE users SET password_hash = ?, is_owner = ? WHERE id = ?",
+                (password_hash, int(is_owner), existing["id"]),
+            )
+            user_id = existing["id"]
+        db_conn.commit()
+        return user_id
+
+    return _create
+
+
+@pytest.fixture
+def login(auth_client):
+    def _login(username: str, password: str):
+        return auth_client.post(
+            "/login",
+            data={"username": username, "password": password},
+            follow_redirects=False,
+        )
+
+    return _login
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_rate_limiter():
+    # The rate limiter is process-global (keyed by client IP, which TestClient
+    # keeps constant across requests), so it must be reset between tests to
+    # keep them isolated from each other.
+    from bookersoft.auth import _failed_attempts
+
+    _failed_attempts.clear()
+    yield
+    _failed_attempts.clear()
 
 
 @pytest.fixture

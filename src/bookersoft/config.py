@@ -7,6 +7,10 @@ COVERS_DIR = DATA_DIR / "covers"
 DB_PATH = DATA_DIR / "library.db"
 STATIC_DIR = Path(__file__).parent / "static"
 
+SESSION_SECRET = os.environ.get("SESSION_SECRET")
+SESSION_COOKIE_NAME = "session"
+SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days: personal library, not a bank
+
 
 def get_books_dir() -> Path:
     BOOKS_DIR.mkdir(parents=True, exist_ok=True)

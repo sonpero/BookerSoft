@@ -9,13 +9,16 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 - Env management: uv
 
 ## Current state
-Milestone 4 — done. Search and filters: a single search box matches title
-and author, case- and accent-insensitive, against a normalized
-`search_text` column maintained on insert, manual edit and re-extraction
-(and backfilled for pre-existing books on migration); combinable filters
-for format, minimum average rating, needs-attention and uploader; sort by
-recently added, title, author or average rating; current search/filters
-live in the URL query string. 102 backend tests passing. Next: milestone 5.
+Milestone 5 — done. Authentication: username + password login (argon2 via
+argon2-cffi), signed session cookie (itsdangerous, HttpOnly/Secure/
+SameSite=Lax, 30-day expiry), rate-limited failed logins per IP. Accounts
+are created and reset only through the `bookersoft-users` CLI, never the
+API; `is_owner` likewise. `/` and `/books/{id}` redirect to `/login`
+server-side without a session; API routes return 401, and a shared
+frontend fetch wrapper redirects on that (covers a session expiring
+mid-use). Only the uploader and the owner can delete a book; a user can
+only ever touch their own review. 123 backend tests passing. Next:
+milestone 6.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below
