@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BookerSoft — Log in</title>
+<link rel="stylesheet" href="/static/theme.css" />
+<link rel="stylesheet" href="/static/login.css" />
+</head>
+<body>
+<main class="login-main">
+<h1 class="login-brand">BookerSoft</h1>
+<form class="login-form" method="post" action="/login">
+<label>
+Username
+<input type="text" name="username" autocomplete="username" required autofocus />
+</label>
+<label>
+Password
+<input type="password" name="password" autocomplete="current-password" required />
+</label>
+<button type="submit" class="login-submit">Log in</button>
+</form>
+<p id="login-error" class="login-error" hidden>Incorrect username or password.</p>
+<p id="login-rate-limited" class="login-error" hidden>Too many attempts. Try again in a few minutes.</p>
+</main>
+<script src="/static/login.js"></script>
+</body>
+</html>

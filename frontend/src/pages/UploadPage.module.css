@@ -1,0 +1,10 @@
+.page {
+  max-width: 32rem;
+}
+
+.heading {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.75rem;
+  margin: 0 0 1.5rem;
+}

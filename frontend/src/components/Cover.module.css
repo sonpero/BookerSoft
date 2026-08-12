@@ -1,0 +1,44 @@
+.cover {
+  border-radius: var(--radius-cover);
+  object-fit: cover;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+  display: block;
+  flex-shrink: 0;
+}
+
+.grid {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+}
+
+.detail {
+  /* Height comes from the wrapper's inline style (BookDetailPage measures
+     the content column via ResizeObserver and sets it there) — width
+     derives from that height through the aspect ratio. */
+  height: 100%;
+  aspect-ratio: 2 / 3;
+}
+
+.placeholder {
+  background: var(--surface-hi);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.6rem;
+  font-family: var(--font-serif);
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.grid.placeholder {
+  font-size: 0.85rem;
+}
+
+.detail.placeholder {
+  font-size: 1.1rem;
+  padding: 1.5rem;
+}

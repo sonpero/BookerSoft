@@ -9,16 +9,15 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 - Env management: uv
 
 ## Current state
-Milestone 5 — done. Authentication: username + password login (argon2 via
-argon2-cffi), signed session cookie (itsdangerous, HttpOnly/Secure/
-SameSite=Lax, 30-day expiry), rate-limited failed logins per IP. Accounts
-are created and reset only through the `bookersoft-users` CLI, never the
-API; `is_owner` likewise. `/` and `/books/{id}` redirect to `/login`
-server-side without a session; API routes return 401, and a shared
-frontend fetch wrapper redirects on that (covers a session expiring
-mid-use). Only the uploader and the owner can delete a book; a user can
-only ever touch their own review. 123 backend tests passing. Next:
-milestone 6.
+Milestone 6 Part A — done. Frontend migrated from vanilla HTML/JS to
+React + Vite + TypeScript (`frontend/`, strict mode throughout), applying
+the visual direction in `docs/design/direction.md`: dark theme, serif
+titles, a persistent sidebar, a cover grid on the library page, a book
+detail page with inline metadata editing and star ratings. No backend
+change; all 123 backend tests pass untouched. The build output
+(`src/bookersoft/static/`) is gitignored — run `cd frontend && npm run
+build` before starting the server; see README. EPUB reader (Part B) is
+next.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below
@@ -99,7 +98,6 @@ Manual editing
   never triggered by upload of an already-known file
 - A re-extraction never overwrites a manually set field; auto-extracted
   fields are refreshed normally
-- The detail page makes it visible which fields were manually edited
 - A normalized (lowercased, accent-stripped) search column is written on
   insert and update, including manual edits — see milestone 4
 

@@ -1,0 +1,17 @@
+.label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  padding-top: 0.1rem;
+}
+
+.value {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+  line-height: 1.7;
+}
+
+.input {
+  min-width: 16rem;
+}

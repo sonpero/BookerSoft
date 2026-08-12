@@ -1,0 +1,18 @@
+.stars {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.star {
+  padding: 0.1rem;
+  color: var(--border);
+  line-height: 0;
+}
+
+.star:hover {
+  color: var(--accent);
+}
+
+.filled {
+  color: var(--accent);
+}

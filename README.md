@@ -7,7 +7,29 @@ full spec and milestone plan.
 
 ```
 uv sync
+cd frontend && npm install
 ```
+
+## Frontend
+
+The frontend lives in `frontend/` (React + Vite + TypeScript) and builds
+into `src/bookersoft/static/`, which FastAPI serves directly — that
+output directory is gitignored (regenerated, not versioned), so it must
+be built at least once before the server has anything to serve:
+
+```
+cd frontend && npm run build
+```
+
+For frontend development with hot reload:
+
+```
+cd frontend && npm run dev
+```
+
+This runs a Vite dev server on `:5173` that proxies API/auth requests to
+the FastAPI backend on `:8000` (start that separately, see below). Visit
+`:5173`, not `:8000`, while developing.
 
 ## Configuration
 

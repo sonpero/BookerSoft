@@ -12,3 +12,10 @@ __pycache__/
 
 # IDE
 .idea/
+
+# Node / frontend
+frontend/node_modules/
+frontend/*.tsbuildinfo
+
+# Frontend build output — regenerate with `cd frontend && npm run build`
+src/bookersoft/static/

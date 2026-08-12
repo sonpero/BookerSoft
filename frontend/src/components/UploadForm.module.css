@@ -1,0 +1,32 @@
+.form {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.form input[type="file"] {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.form button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.errors {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
