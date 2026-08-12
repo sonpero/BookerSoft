@@ -28,7 +28,7 @@ milestone 6.
    the seeded `owner` user, since there is no login yet
 4. Search and filters — see acceptance criteria below
 5. Authentication: password login, owner-created accounts, per-user ownership
-6. In-browser EPUB reader
+6. In-browser EPUB reader - see acceptance criteria below
 7. Remote access (deployment behind HTTPS, session-protected public URL)
 
 ## Milestone 1 — acceptance criteria
@@ -146,6 +146,37 @@ Done when, in the browser:
 
 Out of scope: no full-text search inside book contents, no tags,
 no saved searches.
+
+## Milestone 6 — acceptance criteria
+Part A — frontend migration, no behaviour change
+- React + Vite, built to static files served by FastAPI. Single runtime,
+  no CORS, no dev proxy in production
+- Every existing screen works identically: list, filters, search, upload,
+  detail page, metadata editing, reviews, login
+- URL state (search and filters) still works, including bookmarking
+- No backend change. All existing tests still pass untouched
+- The migration applies the visual direction in `docs/design/direction.md`.
+  This is not a neutral-styling pass: the design direction ships with the
+  migration, not after it
+
+Part B — EPUB reader
+- `/books/{id}/read` opens the book in the browser, for EPUB only.
+  PDFs keep the download link, no in-browser PDF reader
+- Reader shows: paginated content, table of contents, font size control,
+  light/dark following `prefers-color-scheme`
+- Reading position is stored in `localStorage`, per device, keyed by book id
+- Reopening a book returns to the last position on that device
+- The reader streams the file through the authenticated endpoint; the EPUB
+  is never exposed as a static file
+- Keyboard navigation: arrows for pages, Escape to exit
+
+## Design references
+Visual references live in `docs/design/`. Read the relevant file when
+working on that screen.
+- `direction.md` — the visual direction: palette, typography, layout rules.
+  Authoritative for all styling
+- `book-detail-reference.png` — structure and hierarchy of the book detail
+  page only; style comes from `direction.md`, not from this image
 
 ## Storage
 Everything persistent lives under one configurable data directory
