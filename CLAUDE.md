@@ -9,15 +9,26 @@ Store my ebooks (EPUB, PDF) and read them from any device via a browser.
 - Env management: uv
 
 ## Current state
-Milestone 6 Part A — done. Frontend migrated from vanilla HTML/JS to
-React + Vite + TypeScript (`frontend/`, strict mode throughout), applying
-the visual direction in `docs/design/direction.md`: dark theme, serif
-titles, a persistent sidebar, a cover grid on the library page, a book
-detail page with inline metadata editing and star ratings. No backend
-change; all 123 backend tests pass untouched. The build output
-(`src/bookersoft/static/`) is gitignored — run `cd frontend && npm run
-build` before starting the server; see README. EPUB reader (Part B) is
-next.
+Milestone 6 — done, both parts. Part A migrated the frontend from vanilla
+HTML/JS to React + Vite + TypeScript (`frontend/`, strict mode
+throughout), applying the visual direction in `docs/design/direction.md`:
+dark theme, serif titles, a persistent sidebar, a cover grid on the
+library page, a book detail page with inline metadata editing and star
+ratings. No backend change. The build output (`src/bookersoft/static/`)
+is gitignored — run `cd frontend && npm run build` before starting the
+server; see README.
+
+Part B added the in-browser EPUB reader at `/books/{id}/read`, built on
+`epubjs`. Paginated content, table of contents, font size control,
+keyboard navigation (arrows, Escape), reading position remembered per
+book per device via `localStorage`, keyed by epub.js CFI rather than a
+page number so it survives font-size changes. The reading surface is
+themed black-on-white independently of the app's dark chrome, forced
+with `!important` since some EPUBs hardcode their own colors — see
+`rendition.themes` usage in `ReaderPage.tsx`. PDFs still only get the
+download link. No backend change; all 127 backend tests pass untouched.
+
+Milestone 7 (remote access) is next.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below
