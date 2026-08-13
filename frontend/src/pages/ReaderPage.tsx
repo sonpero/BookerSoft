@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ePub from "epubjs";
-import type { Rendition } from "epubjs";
+import type { NavItem, Rendition } from "epubjs";
 
 import { downloadUrl, fetchBookDetail, fetchBookFile, type BookDetail } from "../api";
 import styles from "./ReaderPage.module.css";
 
 type Status = "loading" | "not-found" | "not-epub" | "ready" | "error";
+
+const MIN_FONT_SCALE = 70;
+const MAX_FONT_SCALE = 200;
+const FONT_SCALE_STEP = 10;
+const DEFAULT_FONT_SCALE = 100;
 
 // The reading surface itself stays a plain black-on-white page — that's the
 // content's own theme, independent of the app's dark chrome around it.
@@ -30,6 +35,23 @@ const READER_THEME = {
   },
 };
 
+function TocList({ items, onSelect }: { items: NavItem[]; onSelect: (href: string) => void }) {
+  return (
+    <ul className={styles.toc}>
+      {items.map((item) => (
+        <li key={item.id}>
+          <button type="button" onClick={() => onSelect(item.href)}>
+            {item.label.trim()}
+          </button>
+          {item.subitems && item.subitems.length > 0 && (
+            <TocList items={item.subitems} onSelect={onSelect} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ReaderPage() {
   const { id } = useParams();
   const bookId = Number(id);
@@ -37,11 +59,27 @@ export function ReaderPage() {
 
   const [book, setBook] = useState<BookDetail | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>("loading");
+  const [toc, setToc] = useState<NavItem[]>([]);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [fontScale, setFontScale] = useState(DEFAULT_FONT_SCALE);
   const containerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
 
   function exit() {
     navigate(`/books/${bookId}`);
+  }
+
+  function handleKey(event: KeyboardEvent) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      renditionRef.current?.prev();
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      renditionRef.current?.next();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      exit();
+    }
   }
 
   // Fetches the book's metadata first, only to decide whether there's
@@ -94,6 +132,10 @@ export function ReaderPage() {
         if (cancelled) return;
 
         epubBook = ePub(buffer);
+        epubBook.loaded.navigation.then((navigation) => {
+          if (!cancelled) setToc(navigation.toc);
+        });
+
         rendition = epubBook.renderTo(container, {
           width: "100%",
           height: "100%",
@@ -103,6 +145,7 @@ export function ReaderPage() {
 
         rendition.themes.register("light", READER_THEME);
         rendition.themes.select("light");
+        rendition.themes.fontSize(`${DEFAULT_FONT_SCALE}%`);
         // epub.js loads each spine item into a fresh iframe document as you
         // turn pages. Its theme system re-injects the selected theme's
         // stylesheet into new content automatically, but re-selecting here
@@ -112,6 +155,12 @@ export function ReaderPage() {
         rendition.on("rendered", () => {
           rendition?.themes.select("light");
         });
+
+        // Arrow keys and Escape while focus is inside the book's iframe:
+        // epub.js's Contents forwards DOM keyboard events from inside each
+        // section's document onto the rendition itself, which the outer
+        // window never sees on its own.
+        rendition.on("keyup", handleKey);
 
         return rendition.display();
       })
@@ -128,7 +177,17 @@ export function ReaderPage() {
       rendition?.destroy();
       epubBook?.destroy();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book, bookId]);
+
+  // Same three keys, for when focus is on the outer page (the toolbar, or
+  // right after load before anything inside the iframe has focus) rather
+  // than inside the book's iframe.
+  useEffect(() => {
+    window.addEventListener("keyup", handleKey);
+    return () => window.removeEventListener("keyup", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
 
   function goPrev() {
     renditionRef.current?.prev();
@@ -136,6 +195,17 @@ export function ReaderPage() {
 
   function goNext() {
     renditionRef.current?.next();
+  }
+
+  function goToTocItem(href: string) {
+    renditionRef.current?.display(href);
+    setTocOpen(false);
+  }
+
+  function changeFontScale(delta: number) {
+    const next = Math.min(MAX_FONT_SCALE, Math.max(MIN_FONT_SCALE, fontScale + delta));
+    setFontScale(next);
+    renditionRef.current?.themes.fontSize(`${next}%`);
   }
 
   if (status === "not-found") {
@@ -175,12 +245,48 @@ export function ReaderPage() {
   return (
     <div className={styles.reader}>
       <header className={styles.bar}>
+        <div className={styles.barLeft}>
+          <button
+            type="button"
+            onClick={() => setTocOpen((open) => !open)}
+            disabled={toc.length === 0}
+            aria-label="Table of contents"
+            aria-expanded={tocOpen}
+          >
+            Contents
+          </button>
+        </div>
         <span className={styles.title}>{book?.title}</span>
-        <button type="button" onClick={exit} aria-label="Exit reader">
-          Close
-        </button>
+        <div className={styles.barRight}>
+          <div className={styles.fontControl}>
+            <button
+              type="button"
+              onClick={() => changeFontScale(-FONT_SCALE_STEP)}
+              disabled={fontScale <= MIN_FONT_SCALE}
+              aria-label="Decrease font size"
+            >
+              A−
+            </button>
+            <button
+              type="button"
+              onClick={() => changeFontScale(FONT_SCALE_STEP)}
+              disabled={fontScale >= MAX_FONT_SCALE}
+              aria-label="Increase font size"
+            >
+              A+
+            </button>
+          </div>
+          <button type="button" onClick={exit} aria-label="Exit reader">
+            Close
+          </button>
+        </div>
       </header>
       <div className={styles.viewport}>
+        {tocOpen && (
+          <nav className={styles.tocPanel} aria-label="Table of contents">
+            <TocList items={toc} onSelect={goToTocItem} />
+          </nav>
+        )}
         <button type="button" className={styles.navButton} onClick={goPrev} aria-label="Previous page">
           &lsaquo;
         </button>
