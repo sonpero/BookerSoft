@@ -1,5 +1,7 @@
 import hashlib
 
+from bookersoft.config import get_max_upload_size_bytes
+
 
 def test_single_file_upload_creates_one_book(client, valid_epub_bytes):
     response = client.post(
@@ -123,3 +125,46 @@ def test_uploaded_book_is_attributed_to_owner_user(client, db_conn, valid_epub_b
     owner_id = db_conn.execute("SELECT id FROM users WHERE username = 'owner'").fetchone()[0]
     book_user_id = db_conn.execute("SELECT user_id FROM books").fetchone()[0]
     assert book_user_id == owner_id
+
+
+def test_file_over_the_upload_limit_is_rejected(client):
+    client.app.dependency_overrides[get_max_upload_size_bytes] = lambda: 200
+    oversized_content = b"%PDF" + b"x" * 300  # signature + 304 bytes, over the 200-byte limit
+
+    response = client.post(
+        "/books", files={"files": ("big.pdf", oversized_content, "application/pdf")}
+    )
+
+    body = response.json()
+    assert body["uploaded"] == []
+    assert len(body["rejected"]) == 1
+    assert body["rejected"][0]["filename"] == "big.pdf"
+    assert "limit" in body["rejected"][0]["reason"]
+
+
+def test_file_just_under_the_upload_limit_is_accepted(client):
+    client.app.dependency_overrides[get_max_upload_size_bytes] = lambda: 200
+    small_content = b"%PDF" + b"x" * 100  # signature + 104 bytes, under the 200-byte limit
+
+    response = client.post(
+        "/books", files={"files": ("ok.pdf", small_content, "application/pdf")}
+    )
+
+    body = response.json()
+    assert body["rejected"] == []
+    assert len(body["uploaded"]) == 1
+    assert body["uploaded"][0]["original_filename"] == "ok.pdf"
+
+
+def test_rejected_oversized_file_leaves_nothing_behind(client, books_dir, covers_dir):
+    client.app.dependency_overrides[get_max_upload_size_bytes] = lambda: 200
+    oversized_content = b"%PDF" + b"x" * 300
+
+    response = client.post(
+        "/books", files={"files": ("big.pdf", oversized_content, "application/pdf")}
+    )
+
+    assert response.json()["uploaded"] == []
+    assert list(books_dir.iterdir()) == []
+    assert list(covers_dir.iterdir()) == []
+    assert client.get("/books").json() == []

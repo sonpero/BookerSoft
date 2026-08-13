@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 import sqlite3
 from pathlib import Path
 from urllib.parse import quote
@@ -6,7 +7,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from bookersoft.config import STATIC_DIR, get_books_dir, get_covers_dir
+from bookersoft.config import STATIC_DIR, get_books_dir, get_covers_dir, get_max_upload_size_bytes
 from bookersoft.db import get_db
 from bookersoft.deps import CurrentUser, get_current_user, require_page_session
 from bookersoft.extraction import apply_extraction, normalize_search_text
@@ -57,6 +58,48 @@ def _detect_format(content: bytes) -> BookFormat | None:
     if content.startswith(b"PK\x03\x04"):
         return "epub"
     return None
+
+
+UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+
+def _stream_upload_to_disk(
+    file: UploadFile, books_dir: Path, max_size: int
+) -> tuple[Path, BookFormat, str, int] | str:
+    """Write an upload to a temp file in books_dir, hashing and size-checking
+    it chunk by chunk — the file content is never held in memory whole.
+
+    Returns (temp_path, format, sha256, size_bytes) on success. On rejection
+    (bad signature, or over max_size) returns the reason as a string instead,
+    and any temp file already written to disk is removed first.
+    """
+    first_chunk = file.file.read(UPLOAD_CHUNK_SIZE)
+    book_format = _detect_format(first_chunk)
+    if book_format is None:
+        return "not a valid EPUB or PDF file"
+
+    temp_path = books_dir / f".upload-{secrets.token_hex(16)}.tmp"
+    hasher = hashlib.sha256()
+    total_size = 0
+    too_large = False
+
+    with temp_path.open("wb") as out:
+        chunk = first_chunk
+        while chunk:
+            total_size += len(chunk)
+            if total_size > max_size:
+                too_large = True
+                break
+            hasher.update(chunk)
+            out.write(chunk)
+            chunk = file.file.read(UPLOAD_CHUNK_SIZE)
+
+    if too_large:
+        temp_path.unlink(missing_ok=True)
+        max_mb = max_size // (1024 * 1024)
+        return f"exceeds the {max_mb} MB upload limit"
+
+    return temp_path, book_format, hasher.hexdigest(), total_size
 
 
 def _row_to_summary(row: sqlite3.Row) -> BookSummary:
@@ -111,37 +154,39 @@ def upload_books(
     db: sqlite3.Connection = Depends(get_db),
     books_dir: Path = Depends(get_books_dir),
     covers_dir: Path = Depends(get_covers_dir),
+    max_upload_size: int = Depends(get_max_upload_size_bytes),
 ) -> UploadResponse:
     uploaded: list[UploadedBook] = []
     rejected: list[RejectedFile] = []
 
     for file in files:
         filename = file.filename or "unnamed"
-        content = file.file.read()
-        book_format = _detect_format(content)
 
-        if book_format is None:
-            rejected.append(RejectedFile(filename=filename, reason="not a valid EPUB or PDF file"))
+        result = _stream_upload_to_disk(file, books_dir, max_upload_size)
+        if isinstance(result, str):
+            rejected.append(RejectedFile(filename=filename, reason=result))
             continue
 
-        sha256 = hashlib.sha256(content).hexdigest()
+        temp_path, book_format, sha256, size_bytes = result
+
         existing = db.execute(
             f"SELECT {DETAIL_COLUMNS} FROM books WHERE sha256 = ?", (sha256,)
         ).fetchone()
 
         if existing is not None:
+            temp_path.unlink(missing_ok=True)
             uploaded.append(
                 UploadedBook(**_row_to_summary(existing).model_dump(), duplicate=True)
             )
             continue
 
         stored_filename = f"{sha256}.{book_format}"
-        (books_dir / stored_filename).write_bytes(content)
+        temp_path.replace(books_dir / stored_filename)
 
         cursor = db.execute(
             "INSERT INTO books (user_id, sha256, original_filename, stored_filename, format, size_bytes) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (current_user.id, sha256, filename, stored_filename, book_format, len(content)),
+            (current_user.id, sha256, filename, stored_filename, book_format, size_bytes),
         )
         db.commit()
 

@@ -50,6 +50,9 @@ Upload
   (ZIP magic bytes for EPUB, `%PDF` for PDF), not by extension alone
 - Rejected files are reported by name with the reason; valid files in the
   same batch still go through
+- Files above `MAX_UPLOAD_SIZE_MB` (defaults to 100 MB) are rejected the
+  same way, checked while streaming the upload to disk — never after
+  loading the whole file into memory
 - After the upload finishes, a summary is shown: how many books were
   added, and the name and reason for every rejected or duplicate file
 - Uploaded files land in `$DATA_DIR/books/`, one database row each
@@ -180,6 +183,30 @@ Part B — EPUB reader
 - The reader streams the file through the authenticated endpoint; the EPUB
   is never exposed as a static file
 - Keyboard navigation: arrows for pages, Escape to exit
+
+## Milestone 7 — acceptance criteria
+Done when:
+- The app runs on Railway behind HTTPS, reachable from any device
+- A volume is mounted and `DATA_DIR` points to it: database, book files and
+  covers all live there and survive a redeploy
+- On a fresh volume the app starts cleanly: missing subdirectories are
+  created, the database is initialized, no manual setup on the server
+- Session secret and any other secret come from Railway environment
+  variables. Nothing sensitive in the repo
+- The frontend is built at deploy time and served by FastAPI. Node is needed
+  to build, not to run. No separate runtime in production, no CORS
+- The session cookie works behind Railway's proxy: `Secure` is set and the
+  app trusts the forwarded protocol headers
+- Accounts are created through the CLI command, run against the deployed
+  instance
+- Uploading a large EPUB or PDF from a phone works: no proxy size limit, no
+  timeout
+- The library and the reader are usable on a phone screen
+- A GitHub Actions workflow runs pytest on every push
+- A documented way to back up the volume exists, even if manual
+
+Out of scope: no staging environment, no monitoring, no automated rollback,
+no CDN.
 
 ## Design references
 Visual references live in `docs/design/`. Read the relevant file when
