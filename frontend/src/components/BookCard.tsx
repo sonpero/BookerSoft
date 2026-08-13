@@ -70,8 +70,14 @@ export function BookCard({ book, onDelete }: BookCardProps) {
           </button>
         </div>
       </div>
-      <div className={styles.title}>{book.title}</div>
-      {book.author && <div className={styles.author}>{book.author}</div>}
+      <div className={styles.title} title={book.title}>
+        {book.title}
+      </div>
+      {book.author && (
+        <div className={styles.author} title={book.author}>
+          {book.author}
+        </div>
+      )}
       <div className={styles.rating}>{formatRatingSummary(book)}</div>
     </div>
   );
