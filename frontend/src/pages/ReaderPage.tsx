@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ePub from "epubjs";
-import type { NavItem, Rendition } from "epubjs";
+import type { Location, NavItem, Rendition } from "epubjs";
 
 import { downloadUrl, fetchBookDetail, fetchBookFile, type BookDetail } from "../api";
 import styles from "./ReaderPage.module.css";
@@ -12,6 +12,14 @@ const MIN_FONT_SCALE = 70;
 const MAX_FONT_SCALE = 200;
 const FONT_SCALE_STEP = 10;
 const DEFAULT_FONT_SCALE = 100;
+
+// Keyed by book id, in localStorage: per-device by construction (it's
+// never synced anywhere), which is exactly what's wanted here. A CFI
+// (epub.js's own position format), not a page number — a page number
+// shifts as soon as the font size changes, a CFI doesn't.
+function positionKey(bookId: number): string {
+  return `bookersoft:reader-position:${bookId}`;
+}
 
 // The reading surface itself stays a plain black-on-white page — that's the
 // content's own theme, independent of the app's dark chrome around it.
@@ -128,7 +136,7 @@ export function ReaderPage() {
     let rendition: Rendition | undefined;
 
     fetchBookFile(bookId)
-      .then((buffer) => {
+      .then(async (buffer) => {
         if (cancelled) return;
 
         epubBook = ePub(buffer);
@@ -162,7 +170,25 @@ export function ReaderPage() {
         // window never sees on its own.
         rendition.on("keyup", handleKey);
 
-        return rendition.display();
+        // "relocated" fires once per page turn, TOC jump or resize — not
+        // continuously — because next()/prev()/display() each call
+        // reportLocation() exactly once when they settle.
+        rendition.on("relocated", (location: Location) => {
+          localStorage.setItem(positionKey(bookId), location.start.cfi);
+        });
+
+        // A saved CFI can't be the very first display() call: the section
+        // it points into has never been paginated, so epub.js has no way
+        // to know where that CFI falls on a page yet, and silently lands
+        // on an empty or wrong view. Displaying once with no target first
+        // forces that initial layout pass; only then does jumping straight
+        // to the CFI resolve reliably.
+        const savedPosition = localStorage.getItem(positionKey(bookId));
+        await rendition.display();
+        if (cancelled) return;
+        if (savedPosition) {
+          await rendition.display(savedPosition);
+        }
       })
       .then(() => {
         if (!cancelled) setStatus("ready");
