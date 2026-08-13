@@ -244,6 +244,11 @@ export function BookDetailPage() {
               </button>
             </div>
             <div className={styles.actionsRight}>
+              {book.format === "epub" && (
+                <Link to={`/books/${book.id}/read`} className={styles.downloadLink}>
+                  Read
+                </Link>
+              )}
               <a href={downloadUrl(book.id)} className={styles.downloadLink}>
                 Download
               </a>

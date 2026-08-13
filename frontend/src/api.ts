@@ -240,6 +240,14 @@ export function downloadUrl(bookId: number): string {
   return `/books/${bookId}/file`;
 }
 
+// Fetched as bytes, not passed as a URL to the EPUB renderer: the file only
+// ever leaves the server through this authenticated request, never as a
+// static asset the browser (or a rendering library) could fetch on its own.
+export async function fetchBookFile(id: number): Promise<ArrayBuffer> {
+  const response = await apiFetch(downloadUrl(id));
+  return response.arrayBuffer();
+}
+
 export function formatRatingSummary(book: {
   average_rating: number | null;
   rating_count: number;

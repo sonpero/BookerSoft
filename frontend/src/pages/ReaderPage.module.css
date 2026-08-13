@@ -1,0 +1,68 @@
+.reader {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar button {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.bar button:hover {
+  color: var(--accent);
+}
+
+.viewport {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.viewer {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.navButton {
+  flex-shrink: 0;
+  width: 3rem;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+}
+
+.navButton:hover {
+  color: var(--accent);
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  height: 100vh;
+  padding: 3rem;
+  color: var(--text);
+}

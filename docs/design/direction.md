@@ -50,6 +50,7 @@ should have two or three accent elements, not ten.
   them, using the width that frees up. Clamped to roughly the metadata
   block's height with a Read more / Read less toggle, rather than letting
   a long description run on much taller than its neighbor
+- the reader renders book text in black on white; the surrounding chrome stays dark
 
 ## Detail page
 Follow `book-detail-reference.png` for structure, this file for style.
