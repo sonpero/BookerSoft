@@ -1,14 +1,14 @@
 import { useRef, useState, type FormEvent } from "react";
 
-import type { RejectedFile } from "../api";
+import type { UploadResponse } from "../api";
 import styles from "./UploadForm.module.css";
 
 interface UploadFormProps {
   onUpload: (files: File[]) => Promise<void>;
-  errors: RejectedFile[];
+  result: UploadResponse | null;
 }
 
-export function UploadForm({ onUpload, errors }: UploadFormProps) {
+export function UploadForm({ onUpload, result }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
 
@@ -23,6 +23,16 @@ export function UploadForm({ onUpload, errors }: UploadFormProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  const addedCount = result?.uploaded.filter((book) => !book.duplicate).length ?? 0;
+  const problems = result
+    ? [
+        ...result.uploaded
+          .filter((book) => book.duplicate)
+          .map((book) => ({ filename: book.original_filename, reason: "duplicate of an existing book" })),
+        ...result.rejected,
+      ]
+    : [];
+
   return (
     <div>
       <form className={styles.form} onSubmit={handleSubmit}>
@@ -31,11 +41,16 @@ export function UploadForm({ onUpload, errors }: UploadFormProps) {
           Upload
         </button>
       </form>
-      {errors.length > 0 && (
+      {result && (
+        <p className={styles.summary}>
+          {addedCount === 1 ? "1 book added." : `${addedCount} books added.`}
+        </p>
+      )}
+      {problems.length > 0 && (
         <ul className={styles.errors}>
-          {errors.map((error) => (
-            <li key={error.filename}>
-              {error.filename}: {error.reason}
+          {problems.map((problem, index) => (
+            <li key={`${problem.filename}-${index}`}>
+              {problem.filename}: {problem.reason}
             </li>
           ))}
         </ul>
