@@ -85,6 +85,23 @@ def test_book_without_cover_reference_has_no_cover(client, valid_epub_bytes):
     assert client.get(f"/books/{metadata['id']}/cover").status_code == 404
 
 
+def test_missing_cover_image_request_returns_json_404_not_the_app_shell(client, valid_epub_bytes):
+    # Same request an <img> tag makes for a book with no cover: it sends an
+    # image Accept header, never "text/html", so the SPA catch-all in
+    # main.py must not mistake it for a page navigation and serve the shell.
+    metadata = _upload_and_get_metadata(
+        client, "book.epub", valid_epub_bytes, "application/epub+zip"
+    )
+
+    response = client.get(
+        f"/books/{metadata['id']}/cover",
+        headers={"accept": "image/avif,image/webp,image/apng,image/svg+xml,*/*;q=0.8"},
+    )
+
+    assert response.status_code == 404
+    assert response.headers["content-type"] == "application/json"
+
+
 def test_pdf_metadata_is_extracted_on_upload(client, pdf_full_metadata_bytes):
     metadata = _upload_and_get_metadata(
         client, "book.pdf", pdf_full_metadata_bytes, "application/pdf"

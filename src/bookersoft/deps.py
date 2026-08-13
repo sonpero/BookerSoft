@@ -44,11 +44,11 @@ def get_current_user(
 def require_page_session(
     request: Request, db: sqlite3.Connection = Depends(get_db)
 ) -> CurrentUser:
-    # Used only by the two HTML shell routes (/ and /books/{id}): a browser
-    # navigation should bounce to the login page instead of showing a bare
-    # 401. API routes use get_current_user instead, whose 401 the frontend's
-    # fetch wrapper turns into a client-side redirect (for a session that
-    # expires mid-use).
+    # Used only by HTML shell routes (/, /books/{id}, and the SPA catch-all
+    # in main.py): a browser navigation should bounce to the login page
+    # instead of showing a bare 401. API routes use get_current_user
+    # instead, whose 401 the frontend's fetch wrapper turns into a
+    # client-side redirect (for a session that expires mid-use).
     user = _resolve_current_user(request, db)
     if user is None:
         raise HTTPException(status_code=303, headers={"Location": "/login"})

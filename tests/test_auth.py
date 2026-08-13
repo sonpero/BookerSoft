@@ -130,6 +130,24 @@ def test_home_page_with_valid_session_serves_the_app(auth_client, create_user, l
     assert response.status_code == 200
 
 
+def test_unmapped_frontend_route_serves_the_app_shell(auth_client, create_user, login):
+    # A real browser navigating or reloading on a React Router path (as
+    # opposed to a fetch()/XHR API call) sends "text/html" in Accept.
+    create_user("alice", "correct-password")
+    login("alice", "correct-password")
+
+    response = auth_client.get("/upload", headers={"accept": "text/html"}, follow_redirects=False)
+
+    assert response.status_code == 200
+
+
+def test_unknown_api_path_returns_json_404_not_the_app_shell(auth_client):
+    response = auth_client.get("/users/does-not-exist")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not Found"}
+
+
 def test_logout_clears_the_session(auth_client, create_user, login):
     create_user("alice", "correct-password")
     login("alice", "correct-password")
