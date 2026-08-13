@@ -39,6 +39,8 @@ Upload
   (ZIP magic bytes for EPUB, `%PDF` for PDF), not by extension alone
 - Rejected files are reported by name with the reason; valid files in the
   same batch still go through
+- After the upload finishes, a summary is shown: how many books were
+  added, and the name and reason for every rejected or duplicate file
 - Uploaded files land in `$DATA_DIR/books/`, one database row each
 - A `sha256` of the file content is stored; re-uploading the same content
   is reported as a duplicate instead of creating a second row
