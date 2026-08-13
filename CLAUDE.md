@@ -28,7 +28,25 @@ with `!important` since some EPUBs hardcode their own colors — see
 `rendition.themes` usage in `ReaderPage.tsx`. PDFs still only get the
 download link. No backend change; all 127 backend tests pass untouched.
 
-Milestone 7 (remote access) is next.
+Milestone 7 — done. The app is deployed on Railway behind HTTPS, via a
+multi-stage `Dockerfile` (Node builds the frontend and is discarded;
+the runtime image is Python-only). `DATA_DIR` points at a mounted
+volume; a fresh empty volume gets its subdirectories and database
+created automatically, no manual setup. `SESSION_SECRET` and
+`MAX_UPLOAD_SIZE_MB` (default 100, enforced during the chunked upload
+read rather than after buffering the whole file) come from Railway
+environment variables — see `.env.example`. `uvicorn` runs with
+`--proxy-headers --forwarded-allow-ips='*'` so it trusts Railway's edge
+proxy for the real client IP (needed for the per-IP login rate limit)
+and scheme; the session cookie's `Secure` flag is unconditional, not
+derived from the perceived scheme, so it's correct regardless. A GitHub
+Actions workflow (`.github/workflows/tests.yml`) runs pytest on every
+push. Accounts are created against the deployed instance via
+`bookersoft-users`, run in a Railway shell. 130 backend tests pass.
+Still open: a documented way to back up the volume (acceptance
+criterion below, not yet written).
+
+See `docs/backlog.md` for ideas not yet scheduled.
 
 ## Milestones
 1. Upload, list, download and delete — see acceptance criteria below
