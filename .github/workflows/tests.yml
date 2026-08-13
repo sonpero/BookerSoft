@@ -1,0 +1,35 @@
+name: Tests
+
+on: push
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The app fails to even start without src/bookersoft/static/ present
+      # (the StaticFiles mount raises at import time) — the frontend has to
+      # be built before pytest can import the app at all, not just before
+      # serving real traffic.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        run: uv run pytest -q
