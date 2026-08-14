@@ -8,6 +8,16 @@ MetadataSource = Literal["auto", "manual"]
 SortOption = Literal["recent", "title", "author", "rating"]
 
 
+class TagOut(BaseModel):
+    id: int
+    name: str
+    book_count: int
+
+
+class TagIn(BaseModel):
+    name: str
+
+
 class BookSummary(BaseModel):
     id: int
     original_filename: str
@@ -20,6 +30,7 @@ class BookSummary(BaseModel):
     needs_attention: bool
     average_rating: float | None
     rating_count: int
+    tags: list[TagOut]
 
 
 class UploadedBook(BookSummary):
@@ -61,6 +72,7 @@ class BookDetail(BaseModel):
     extraction_failed: bool
     average_rating: float | None
     rating_count: int
+    tags: list[TagOut]
 
 
 class BookUpdate(BaseModel):

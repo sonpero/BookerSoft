@@ -58,6 +58,7 @@ See `docs/backlog.md` for ideas not yet scheduled.
 5. Authentication: password login, owner-created accounts, per-user ownership
 6. In-browser EPUB reader - see acceptance criteria below
 7. Remote access (deployment behind HTTPS, session-protected public URL)
+8. Tags - see acceptance criteria below
 
 ## Milestone 1 — acceptance criteria
 Done when, in the browser:
@@ -225,6 +226,34 @@ Done when:
 
 Out of scope: no staging environment, no monitoring, no automated rollback,
 no CDN.
+
+## Milestone 8 — Tags — acceptance criteria
+Done when, in the browser:
+
+Model
+- Tags are free-form, shared across all users, several per book
+- Tags are normalized on save: trimmed, lowercased, whitespace collapsed.
+  "Tech" and " tech " are the same tag
+- A tag with no books left is removed automatically
+
+Editing
+- On the book detail page I can add a tag and remove one
+- Adding a tag suggests existing tags as I type, so I reuse rather than
+  duplicate
+- Adding a tag already on the book does nothing, without an error
+- Deleting a book removes its tag associations (`ON DELETE CASCADE`)
+
+Filtering
+- Tags appear in the existing filter bar, multi-select, alongside format,
+  rating and uploaded-by
+- Selecting several tags returns books carrying ALL of them (AND)
+- Tag filters combine with search and with every other filter
+- Clicking a tag on a book detail page filters the library by that tag
+- Selected tags live in the URL query string, like the other filters
+- The tag list shows how many books carry each tag
+
+Out of scope: no OR mode, no tag renaming, no per-user tags, no tag
+hierarchy, no tags in the main search box.
 
 ## Cover overlay — acceptance criteria
 Done when, on the book detail page:

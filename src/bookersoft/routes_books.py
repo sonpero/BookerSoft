@@ -18,9 +18,11 @@ from bookersoft.models import (
     BookUpdate,
     RejectedFile,
     SortOption,
+    TagOut,
     UploadedBook,
     UploadResponse,
 )
+from bookersoft.routes_tags import fetch_tags_for_books
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -102,7 +104,7 @@ def _stream_upload_to_disk(
     return temp_path, book_format, hasher.hexdigest(), total_size
 
 
-def _row_to_summary(row: sqlite3.Row) -> BookSummary:
+def _row_to_summary(row: sqlite3.Row, tags: list[TagOut]) -> BookSummary:
     return BookSummary(
         id=row["id"],
         original_filename=row["original_filename"],
@@ -115,10 +117,11 @@ def _row_to_summary(row: sqlite3.Row) -> BookSummary:
         needs_attention=bool(row["needs_attention"]),
         average_rating=row["average_rating"],
         rating_count=row["rating_count"],
+        tags=tags,
     )
 
 
-def _row_to_detail(row: sqlite3.Row) -> BookDetail:
+def _row_to_detail(row: sqlite3.Row, tags: list[TagOut]) -> BookDetail:
     return BookDetail(
         id=row["id"],
         original_filename=row["original_filename"],
@@ -144,6 +147,7 @@ def _row_to_detail(row: sqlite3.Row) -> BookDetail:
         extraction_failed=bool(row["extraction_failed"]),
         average_rating=row["average_rating"],
         rating_count=row["rating_count"],
+        tags=tags,
     )
 
 
@@ -175,8 +179,11 @@ def upload_books(
 
         if existing is not None:
             temp_path.unlink(missing_ok=True)
+            existing_tags = fetch_tags_for_books(db, [existing["id"]])[existing["id"]]
             uploaded.append(
-                UploadedBook(**_row_to_summary(existing).model_dump(), duplicate=True)
+                UploadedBook(
+                    **_row_to_summary(existing, existing_tags).model_dump(), duplicate=True
+                )
             )
             continue
 
@@ -195,7 +202,7 @@ def upload_books(
         row = db.execute(
             f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (cursor.lastrowid,)
         ).fetchone()
-        uploaded.append(UploadedBook(**_row_to_summary(row).model_dump(), duplicate=False))
+        uploaded.append(UploadedBook(**_row_to_summary(row, tags=[]).model_dump(), duplicate=False))
 
     return UploadResponse(uploaded=uploaded, rejected=rejected)
 
@@ -207,6 +214,7 @@ def list_books(
     format: BookFormat | None = None,
     min_rating: float | None = Query(default=None, ge=1, le=5),
     uploaded_by: int | None = None,
+    tags: list[int] | None = Query(default=None),
     sort: SortOption = "recent",
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
@@ -229,6 +237,18 @@ def list_books(
     if uploaded_by is not None:
         conditions.append("user_id = ?")
         params.append(uploaded_by)
+    if tags:
+        # AND, not OR: a book must carry every requested tag. Match rows in
+        # book_tags for any of the requested ids, then keep only the books
+        # whose count of *distinct* matches equals the number requested —
+        # the only way to reach that count is to have all of them.
+        placeholders = ",".join("?" * len(tags))
+        conditions.append(
+            f"id IN (SELECT book_id FROM book_tags WHERE tag_id IN ({placeholders}) "
+            "GROUP BY book_id HAVING COUNT(DISTINCT tag_id) = ?)"
+        )
+        params.extend(tags)
+        params.append(len(tags))
 
     query = f"SELECT * FROM (SELECT {LIST_COLUMNS} FROM books)"
     if conditions:
@@ -236,7 +256,8 @@ def list_books(
     query += f" ORDER BY {ORDER_BY_CLAUSES[sort]}"
 
     rows = db.execute(query, params).fetchall()
-    return [_row_to_summary(row) for row in rows]
+    tags_by_book = fetch_tags_for_books(db, [row["id"] for row in rows])
+    return [_row_to_summary(row, tags_by_book[row["id"]]) for row in rows]
 
 
 @router.get("/{book_id}/file")
@@ -298,7 +319,7 @@ def get_book_metadata(
     row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Book not found")
-    return _row_to_detail(row)
+    return _row_to_detail(row, fetch_tags_for_books(db, [book_id])[book_id])
 
 
 @router.patch("/{book_id}/metadata", response_model=BookDetail)
@@ -334,7 +355,7 @@ def update_book_metadata(
         db.commit()
 
     updated_row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
-    return _row_to_detail(updated_row)
+    return _row_to_detail(updated_row, fetch_tags_for_books(db, [book_id])[book_id])
 
 
 @router.post("/{book_id}/re-extract", response_model=BookDetail)
@@ -352,7 +373,7 @@ def re_extract_book(
     apply_extraction(db, book_id, books_dir, covers_dir)
 
     updated_row = db.execute(f"SELECT {DETAIL_COLUMNS} FROM books WHERE id = ?", (book_id,)).fetchone()
-    return _row_to_detail(updated_row)
+    return _row_to_detail(updated_row, fetch_tags_for_books(db, [book_id])[book_id])
 
 
 @router.get("/{book_id}")

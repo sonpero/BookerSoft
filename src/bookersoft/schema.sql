@@ -32,4 +32,27 @@ CREATE TABLE IF NOT EXISTS reviews (
     UNIQUE(user_id, book_id)
 );
 
+CREATE TABLE IF NOT EXISTS tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE CHECK (name <> '')
+);
+
+CREATE TABLE IF NOT EXISTS book_tags (
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (book_id, tag_id)
+);
+
+-- Fires on every deletion from book_tags, whichever path caused it (an
+-- explicit tag removal, or a book delete cascading via ON DELETE CASCADE
+-- above) — that cascade only reaches this trigger if PRAGMA foreign_keys
+-- is on for the connection, see db.get_connection.
+CREATE TRIGGER IF NOT EXISTS delete_orphaned_tags
+AFTER DELETE ON book_tags
+BEGIN
+    DELETE FROM tags
+    WHERE id = OLD.tag_id
+      AND NOT EXISTS (SELECT 1 FROM book_tags WHERE tag_id = OLD.tag_id);
+END;
+
 INSERT OR IGNORE INTO users (id, username) VALUES (1, 'owner');
