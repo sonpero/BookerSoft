@@ -8,16 +8,14 @@
   flex-shrink: 0;
 }
 
-.grid {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-}
-
+/* Width-driven for both sizes: each wrapper's own width comes from its
+   layout context (grid column, or the flex-based .coverWrapper — see
+   BookDetailPage.module.css), and height follows through the aspect
+   ratio. Nothing here depends on measuring any other element, so the
+   cover can never be wider than the space it's actually given. */
+.grid,
 .detail {
-  /* Height comes from the wrapper's inline style (BookDetailPage measures
-     the content column via ResizeObserver and sets it there) — width
-     derives from that height through the aspect ratio. */
-  height: 100%;
+  width: 100%;
   aspect-ratio: 2 / 3;
 }
 

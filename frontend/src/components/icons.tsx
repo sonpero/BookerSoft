@@ -33,6 +33,22 @@ export function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
+export function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <path d="M5 5l10 10M15 5 5 15" />
+    </svg>
+  );
+}
+
 export function TrashIcon() {
   return (
     <svg

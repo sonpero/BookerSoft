@@ -226,6 +226,20 @@ Done when:
 Out of scope: no staging environment, no monitoring, no automated rollback,
 no CDN.
 
+## Cover overlay — acceptance criteria
+Done when, on the book detail page:
+- Clicking the cover opens it full-size in an overlay: a translucent dark
+  scrim over the rest of the page
+- The cover displays as large as it can without exceeding the viewport,
+  aspect ratio preserved
+- The overlay closes on a click outside the image, on a close button, and
+  on Escape
+- Background page scroll is locked while the overlay is open
+- Usable at thumb: the close button is at least 44px in both dimensions,
+  and tapping anywhere outside the image closes the overlay too
+- A book with no cover (placeholder tile): clicking it does nothing — no
+  overlay, nothing to blow up to full size
+
 ## Design references
 Visual references live in `docs/design/`. Read the relevant file when
 working on that screen.

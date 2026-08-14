@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
+  coverUrl,
   deleteBook,
   deleteMyReview,
   downloadUrl,
@@ -17,6 +18,7 @@ import {
   type ReviewOut,
 } from "../api";
 import { Cover } from "../components/Cover";
+import { CoverOverlay } from "../components/CoverOverlay";
 import { MetadataField } from "../components/MetadataField";
 import { ReviewForm } from "../components/ReviewForm";
 import { ReviewsList } from "../components/ReviewsList";
@@ -31,16 +33,6 @@ interface Drafts {
   isbn: string;
   description: string;
 }
-
-// Used only until the ResizeObserver below reports the real height of the
-// content column, so the cover doesn't flash at 0 height on first render.
-const DEFAULT_COVER_HEIGHT = 272;
-
-// A very long or duplicated title (extraction artifacts happen) can make the
-// content column far taller than a book cover should ever be; without a cap
-// the cover's derived width (height * 2/3 aspect ratio) grows right along
-// with it and overflows the page.
-const MAX_COVER_HEIGHT = 560;
 
 function draftsFromBook(book: BookDetail): Drafts {
   return {
@@ -65,6 +57,7 @@ export function BookDetailPage() {
 
   const [editingMetadata, setEditingMetadata] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [coverOverlayOpen, setCoverOverlayOpen] = useState(false);
   const [drafts, setDrafts] = useState<Drafts>({
     title: "",
     author: "",
@@ -75,30 +68,6 @@ export function BookDetailPage() {
     description: "",
   });
   const [saving, setSaving] = useState(false);
-
-  // A state-backed callback ref, not useRef: while the book is still
-  // loading this component returns null (see below), so the .info div
-  // doesn't exist on the first mount — a plain useRef + effect with an
-  // empty dependency array would run before it exists and never attach.
-  // Using state for the node means the effect re-runs exactly when the
-  // node actually appears.
-  const [infoNode, setInfoNode] = useState<HTMLDivElement | null>(null);
-  const [coverHeight, setCoverHeight] = useState(DEFAULT_COVER_HEIGHT);
-
-  // The cover's height follows the content column's actual rendered height
-  // (title, actions, metadata and description together), not the other way
-  // around: the column's own width is never affected by the cover, which is
-  // what keeps this from becoming a circular layout.
-  useEffect(() => {
-    if (!infoNode) return;
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) setCoverHeight(Math.min(entry.contentRect.height, MAX_COVER_HEIGHT));
-    });
-    observer.observe(infoNode);
-    return () => observer.disconnect();
-  }, [infoNode]);
 
   async function loadBook() {
     setBook(await fetchBookDetail(bookId));
@@ -119,6 +88,17 @@ export function BookDetailPage() {
     setDescriptionExpanded(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId]);
+
+  function openCoverOverlay() {
+    if (book?.has_cover) setCoverOverlayOpen(true);
+  }
+
+  function handleCoverKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openCoverOverlay();
+    }
+  }
 
   function startEditingMetadata() {
     if (!book) return;
@@ -212,11 +192,21 @@ export function BookDetailPage() {
       </Link>
 
       <div className={styles.layout}>
-        <div className={styles.coverWrapper} style={{ height: `${coverHeight}px` }}>
+        <div
+          className={`${styles.coverWrapper} ${book.has_cover ? styles.coverClickable : ""}`}
+          onClick={openCoverOverlay}
+          onKeyDown={book.has_cover ? handleCoverKeyDown : undefined}
+          role={book.has_cover ? "button" : undefined}
+          tabIndex={book.has_cover ? 0 : undefined}
+          aria-label={book.has_cover ? `View cover of ${book.title} full size` : undefined}
+        >
           <Cover book={book} size="detail" />
         </div>
+        {coverOverlayOpen && book.has_cover && (
+          <CoverOverlay src={coverUrl(book.id)} alt={book.title ?? ""} onClose={() => setCoverOverlayOpen(false)} />
+        )}
 
-        <div className={styles.info} ref={setInfoNode}>
+        <div className={styles.info}>
           <h1 className={styles.title}>{book.title}</h1>
           <p className={styles.author}>{book.author || "Unknown author"}</p>
           <p className={styles.ratingSummary}>{formatRatingSummary(book)}</p>

@@ -23,13 +23,30 @@
 }
 
 .coverWrapper {
-  flex-shrink: 0;
-  max-width: 100%;
+  /* Relative, not fixed: on a narrow layout (a squeezed sidebar-plus-cover
+     desktop window, for instance) the cover gives up space to .info rather
+     than holding it hostage at a size .info can't afford. */
+  flex: 0 1 32%;
+  min-width: 160px;
+  max-width: 340px;
+}
+
+.coverClickable {
+  cursor: pointer;
+}
+
+.coverClickable:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .info {
   flex: 1;
   min-width: 0;
+  /* Lets .metaRow below query the space actually left over after the
+     sidebar and the cover, rather than the viewport width — those two
+     can eat a very different amount of it depending on window size. */
+  container: info / inline-size;
 }
 
 .title {
@@ -126,12 +143,16 @@
 .metaRow {
   display: flex;
   gap: 3rem;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .fields {
   display: grid;
-  grid-template-columns: 7rem 1fr;
+  /* minmax, not a fixed 7rem: the label column shrinks down to the width
+     of its longest word ("Publisher") instead of forcing the grid wider
+     than the space it's been given. The value column gets the same
+     treatment (minmax(0, 1fr), not bare 1fr) so it can shrink too. */
+  grid-template-columns: minmax(min-content, 7rem) minmax(0, 1fr);
   align-items: start;
   row-gap: 1rem;
   column-gap: 1.5rem;
@@ -156,7 +177,9 @@
 
 /* Roughly matches the height of the six metadata rows beside it, so the
    two columns bottom out together instead of the description running on
-   much longer than the fields it sits next to. */
+   much longer than the fields it sits next to. The container query below
+   overrides this once .metaRow stacks — there's no neighboring column
+   height to match anymore at that point. */
 .descriptionTextClamped {
   display: -webkit-box;
   -webkit-line-clamp: 8;
@@ -191,36 +214,66 @@
   margin: 0 0 1.25rem;
 }
 
-@media (max-width: 768px) {
-  .layout {
-    flex-direction: column;
-  }
-
-  /* The JS-measured height matches the content column only in the
-     side-by-side layout; stacked, the cover sizes itself naturally. Cover.module.css
-     drives the image's own box from a definite height (100% of this wrapper) — with
-     the wrapper's height now auto, that percentage has nothing to resolve against,
-     so give the image a definite width instead and let height follow from it. */
-  .coverWrapper {
-    height: auto !important;
-    width: min(60%, 260px);
-    margin: 0 auto;
-  }
-
-  .coverWrapper img,
-  .coverWrapper > div {
-    width: 100%;
-    height: auto;
-  }
-
+/* .metaRow's own layout (side-by-side vs stacked) depends on how much
+   space is actually left after the sidebar and the cover, not on the
+   viewport — a container query queries .info's real width directly
+   instead of guessing at it from a device breakpoint. */
+@container info (max-width: 600px) {
   .metaRow {
     flex-direction: column;
     gap: 1.5rem;
   }
 
+  .fields {
+    column-gap: 1rem;
+  }
+
+  /* MetadataField's input has a desktop min-width (16rem) meant for the
+     side-by-side layout; stacked, the value column can be narrower than
+     that, which would overflow — override it structurally since that
+     class lives in a different CSS module. */
+  .fields input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Stacked, the description no longer sits beside the metadata block, so
+     matching its height stops making sense — clamp to a length that reads
+     well on its own in a single narrow column instead. */
+  .descriptionTextClamped {
+    -webkit-line-clamp: 6;
+  }
+
+  /* actionsLeft and actionsRight (Edit/Save/Cancel, Read/Download/Delete)
+     don't fit side by side below this width either — same "not enough
+     room in .info" cause as .metaRow above, not a device/viewport concern,
+     so it belongs in the same container query rather than the touch-target
+     media query below. */
   .actions {
     flex-wrap: wrap;
     row-gap: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  /* .coverWrapper and .info are relative/flex-grown widths meant for the
+     side-by-side layout; stacked, align-items on .layout no longer
+     stretches them (the cross axis is now horizontal), so both need an
+     explicit width here. .info doubly needs one: container-type on it
+     forbids sizing from its own content, so with no explicit width and
+     no stretch, it would collapse to zero instead of falling back to
+     fit-content. */
+  .coverWrapper {
+    width: min(60%, 260px);
+    margin: 0 auto;
+  }
+
+  .info {
+    width: 100%;
   }
 
   .actions button {
@@ -238,17 +291,11 @@
     margin: 0 -0.5rem;
   }
 
-  /* .fields is 7rem + 1fr; on a narrow stacked column the value cell can be
-     narrower than MetadataField's desktop min-width (16rem), which would
-     overflow — override it structurally since that class lives in a
-     different CSS module. */
-  .fields {
-    grid-template-columns: 5rem 1fr;
-    column-gap: 1rem;
-  }
-
-  .fields input {
-    min-width: 0;
-    width: 100%;
+  .readMoreButton {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 0.25rem;
+    margin: 0 -0.25rem;
   }
 }
