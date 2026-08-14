@@ -13,6 +13,9 @@ const MAX_FONT_SCALE = 200;
 const FONT_SCALE_STEP = 10;
 const DEFAULT_FONT_SCALE = 100;
 
+// Same breakpoint as the rest of the app's mobile layout (Sidebar, Layout).
+const MOBILE_QUERY = "(max-width: 768px)";
+
 // Keyed by book id, in localStorage: per-device by construction (it's
 // never synced anywhere), which is exactly what's wanted here. A CFI
 // (epub.js's own position format), not a page number — a page number
@@ -70,8 +73,19 @@ export function ReaderPage() {
   const [toc, setToc] = useState<NavItem[]>([]);
   const [tocOpen, setTocOpen] = useState(false);
   const [fontScale, setFontScale] = useState(DEFAULT_FONT_SCALE);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
   const containerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
+
+  // Crossing this breakpoint (resize, or rotating a tablet) tears down and
+  // rebuilds the rendition below with a different manager — epub.js doesn't
+  // support swapping managers on a live rendition, only the flow within one.
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
 
   function exit() {
     navigate(`/books/${bookId}`);
@@ -147,7 +161,13 @@ export function ReaderPage() {
         rendition = epubBook.renderTo(container, {
           width: "100%",
           height: "100%",
-          flow: "paginated",
+          // "continuous" is the manager epub.js pairs with "scrolled" for a
+          // seamless scroll across chapter boundaries, not just within one;
+          // the "default" manager stays paginated for large screens. A
+          // manager can't be swapped on a live rendition (only flow can),
+          // so crossing the breakpoint re-runs this whole effect instead.
+          manager: isMobile ? "continuous" : "default",
+          flow: isMobile ? "scrolled" : "paginated",
         });
         renditionRef.current = rendition;
 
@@ -204,7 +224,7 @@ export function ReaderPage() {
       epubBook?.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book, bookId]);
+  }, [book, bookId, isMobile]);
 
   // Same three keys, for when focus is on the outer page (the toolbar, or
   // right after load before anything inside the iframe has focus) rather
@@ -313,13 +333,17 @@ export function ReaderPage() {
             <TocList items={toc} onSelect={goToTocItem} />
           </nav>
         )}
-        <button type="button" className={styles.navButton} onClick={goPrev} aria-label="Previous page">
-          &lsaquo;
-        </button>
+        {!isMobile && (
+          <button type="button" className={styles.navButton} onClick={goPrev} aria-label="Previous page">
+            &lsaquo;
+          </button>
+        )}
         <div ref={containerRef} className={styles.viewer} />
-        <button type="button" className={styles.navButton} onClick={goNext} aria-label="Next page">
-          &rsaquo;
-        </button>
+        {!isMobile && (
+          <button type="button" className={styles.navButton} onClick={goNext} aria-label="Next page">
+            &rsaquo;
+          </button>
+        )}
       </div>
     </div>
   );
