@@ -68,3 +68,44 @@ export function Sidebar({ user }: SidebarProps) {
     </aside>
   );
 }
+
+export function MobileHeader({ user }: SidebarProps) {
+  async function handleLogout() {
+    await logout();
+    window.location.href = "/login";
+  }
+
+  return (
+    <header className={styles.mobileHeader}>
+      <span className={styles.brand}>BookerSoft</span>
+      <div className={styles.mobileAccount}>
+        {user?.username && <span className={styles.username}>{user.username}</span>}
+        <button type="button" className={styles.mobileLogoutButton} onClick={handleLogout}>
+          Log out
+        </button>
+      </div>
+    </header>
+  );
+}
+
+export function MobileNav() {
+  return (
+    <nav className={styles.mobileNav}>
+      <NavLink
+        to="/"
+        end
+        className={({ isActive }) => `${styles.mobileNavItem} ${isActive ? styles.mobileActive : ""}`}
+      >
+        <LibraryIcon />
+        <span>Library</span>
+      </NavLink>
+      <NavLink
+        to="/upload"
+        className={({ isActive }) => `${styles.mobileNavItem} ${isActive ? styles.mobileActive : ""}`}
+      >
+        <UploadIcon />
+        <span>Upload</span>
+      </NavLink>
+    </nav>
+  );
+}

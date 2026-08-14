@@ -46,3 +46,10 @@
   margin-top: 1rem;
   text-align: center;
 }
+
+@media (max-width: 768px) {
+  .login-submit {
+    padding: 0.8rem 1rem;
+    min-height: 44px;
+  }
+}

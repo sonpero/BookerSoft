@@ -36,6 +36,12 @@ interface Drafts {
 // content column, so the cover doesn't flash at 0 height on first render.
 const DEFAULT_COVER_HEIGHT = 272;
 
+// A very long or duplicated title (extraction artifacts happen) can make the
+// content column far taller than a book cover should ever be; without a cap
+// the cover's derived width (height * 2/3 aspect ratio) grows right along
+// with it and overflows the page.
+const MAX_COVER_HEIGHT = 560;
+
 function draftsFromBook(book: BookDetail): Drafts {
   return {
     title: book.title ?? "",
@@ -88,7 +94,7 @@ export function BookDetailPage() {
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) setCoverHeight(entry.contentRect.height);
+      if (entry) setCoverHeight(Math.min(entry.contentRect.height, MAX_COVER_HEIGHT));
     });
     observer.observe(infoNode);
     return () => observer.disconnect();

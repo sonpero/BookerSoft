@@ -9,3 +9,15 @@
   min-width: 0;
   padding: 2.5rem 3rem 4rem;
 }
+
+@media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: auto;
+  }
+
+  .main {
+    padding: 1.25rem 1rem calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}

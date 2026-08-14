@@ -16,3 +16,18 @@
 .filled {
   color: var(--accent);
 }
+
+@media (max-width: 768px) {
+  .stars {
+    gap: 0.1rem;
+  }
+
+  .star {
+    padding: 0.55rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

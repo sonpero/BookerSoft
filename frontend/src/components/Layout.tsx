@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { fetchCurrentUser, type CurrentUser } from "../api";
-import { Sidebar } from "./Sidebar";
+import { MobileHeader, MobileNav, Sidebar } from "./Sidebar";
 import styles from "./Layout.module.css";
 
 export function Layout() {
@@ -15,9 +15,11 @@ export function Layout() {
   return (
     <div className={styles.shell}>
       <Sidebar user={user} />
+      <MobileHeader user={user} />
       <main className={styles.main}>
         <Outlet context={user} />
       </main>
+      <MobileNav />
     </div>
   );
 }
