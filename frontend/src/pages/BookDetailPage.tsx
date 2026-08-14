@@ -16,12 +16,14 @@ import {
   type BookDetail,
   type BookUpdate,
   type ReviewOut,
+  type TagOut,
 } from "../api";
 import { Cover } from "../components/Cover";
 import { CoverOverlay } from "../components/CoverOverlay";
 import { MetadataField } from "../components/MetadataField";
 import { ReviewForm } from "../components/ReviewForm";
 import { ReviewsList } from "../components/ReviewsList";
+import { TagEditor } from "../components/TagEditor";
 import styles from "./BookDetailPage.module.css";
 
 interface Drafts {
@@ -143,6 +145,10 @@ export function BookDetailPage() {
     }
     setSaving(false);
     setEditingMetadata(false);
+  }
+
+  function handleTagsChange(tags: TagOut[]) {
+    setBook((current) => (current ? { ...current, tags } : current));
   }
 
   async function handleReExtract() {
@@ -327,6 +333,8 @@ export function BookDetailPage() {
               )}
             </div>
           </div>
+
+          <TagEditor bookId={book.id} tags={book.tags} onChange={handleTagsChange} />
         </div>
       </div>
 

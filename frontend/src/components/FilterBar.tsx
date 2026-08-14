@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 
-import { hasActiveFilters, type BookFilters, type BookFormat, type SortOption, type UserOut } from "../api";
+import { hasActiveFilters, type BookFilters, type BookFormat, type SortOption, type TagOut, type UserOut } from "../api";
 import styles from "./FilterBar.module.css";
+import tagStyles from "./Tag.module.css";
 
 interface FilterBarProps {
   filters: BookFilters;
   users: UserOut[];
+  tags: TagOut[];
   onChange: (patch: Partial<BookFilters>) => void;
   onClear: () => void;
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
 
-export function FilterBar({ filters, users, onChange, onClear }: FilterBarProps) {
+export function FilterBar({ filters, users, tags, onChange, onClear }: FilterBarProps) {
   const [searchText, setSearchText] = useState(filters.q);
   const debounceRef = useRef<number | undefined>(undefined);
 
@@ -26,6 +28,13 @@ export function FilterBar({ filters, users, onChange, onClear }: FilterBarProps)
     setSearchText(value);
     window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => onChange({ q: value }), SEARCH_DEBOUNCE_MS);
+  }
+
+  function toggleTag(tagId: number) {
+    const nextTags = filters.tags.includes(tagId)
+      ? filters.tags.filter((id) => id !== tagId)
+      : [...filters.tags, tagId];
+    onChange({ tags: nextTags });
   }
 
   return (
@@ -76,6 +85,33 @@ export function FilterBar({ filters, users, onChange, onClear }: FilterBarProps)
               ))}
             </select>
           </label>
+
+          <div className={styles.field}>
+            Tags
+            <details className={styles.tagsField}>
+              <summary className={styles.tagsSummary}>
+                {filters.tags.length > 0 ? `${filters.tags.length} selected` : "All"}
+              </summary>
+              <div className={styles.tagsPanel}>
+                {tags.length === 0 ? (
+                  <p className={styles.noTags}>No tags yet</p>
+                ) : (
+                  <div className={tagStyles.list}>
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        className={`${tagStyles.tag} ${filters.tags.includes(tag.id) ? tagStyles.selected : ""}`}
+                        onClick={() => toggleTag(tag.id)}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
 
           <label className={styles.field}>
             Sort by

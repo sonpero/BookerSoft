@@ -2,6 +2,12 @@ export type BookFormat = "epub" | "pdf";
 export type MetadataSource = "auto" | "manual";
 export type SortOption = "recent" | "title" | "author" | "rating";
 
+export interface TagOut {
+  id: number;
+  name: string;
+  book_count: number;
+}
+
 export interface BookSummary {
   id: number;
   original_filename: string;
@@ -14,6 +20,7 @@ export interface BookSummary {
   needs_attention: boolean;
   average_rating: number | null;
   rating_count: number;
+  tags: TagOut[];
 }
 
 export interface UploadedBook extends BookSummary {
@@ -55,6 +62,7 @@ export interface BookDetail {
   extraction_failed: boolean;
   average_rating: number | null;
   rating_count: number;
+  tags: TagOut[];
 }
 
 export interface BookUpdate {
@@ -110,6 +118,7 @@ export interface BookFilters {
   format: BookFormat | "";
   min_rating: string;
   uploaded_by: string;
+  tags: number[];
   sort: SortOption;
   needs_attention: boolean;
 }
@@ -119,6 +128,7 @@ export const DEFAULT_FILTERS: BookFilters = {
   format: "",
   min_rating: "",
   uploaded_by: "",
+  tags: [],
   sort: "recent",
   needs_attention: false,
 };
@@ -129,6 +139,7 @@ export function filtersToSearchParams(filters: BookFilters): URLSearchParams {
   if (filters.format) params.set("format", filters.format);
   if (filters.min_rating) params.set("min_rating", filters.min_rating);
   if (filters.uploaded_by) params.set("uploaded_by", filters.uploaded_by);
+  for (const tagId of filters.tags) params.append("tags", String(tagId));
   if (filters.sort !== "recent") params.set("sort", filters.sort);
   if (filters.needs_attention) params.set("needs_attention", "true");
   return params;
@@ -140,6 +151,10 @@ export function filtersFromSearchParams(params: URLSearchParams): BookFilters {
     format: (params.get("format") as BookFormat | null) ?? "",
     min_rating: params.get("min_rating") ?? "",
     uploaded_by: params.get("uploaded_by") ?? "",
+    tags: params
+      .getAll("tags")
+      .map(Number)
+      .filter((n) => Number.isInteger(n)),
     sort: (params.get("sort") as SortOption | null) ?? "recent",
     needs_attention: params.get("needs_attention") === "true",
   };
@@ -151,6 +166,7 @@ export function hasActiveFilters(filters: BookFilters): boolean {
       filters.format ||
       filters.min_rating ||
       filters.uploaded_by ||
+      filters.tags.length > 0 ||
       filters.needs_attention ||
       filters.sort !== "recent",
   );
@@ -230,6 +246,24 @@ export async function saveMyReview(bookId: number, review: ReviewIn): Promise<Re
 
 export async function deleteMyReview(bookId: number): Promise<Response> {
   return apiFetch(`/books/${bookId}/review`, { method: "DELETE" });
+}
+
+export async function fetchTags(): Promise<TagOut[]> {
+  const response = await apiFetch("/tags");
+  return response.json();
+}
+
+export async function addTagToBook(bookId: number, name: string): Promise<TagOut[]> {
+  const response = await apiFetch(`/books/${bookId}/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  return response.json();
+}
+
+export async function removeTagFromBook(bookId: number, tagId: number): Promise<Response> {
+  return apiFetch(`/books/${bookId}/tags/${tagId}`, { method: "DELETE" });
 }
 
 export function coverUrl(bookId: number): string {

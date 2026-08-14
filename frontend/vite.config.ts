@@ -47,6 +47,7 @@ export default defineConfig(({ command }) => ({
         bypass: bypassBookDetailRoute,
       },
       "/users": { target: BACKEND_ORIGIN, changeOrigin: true },
+      "/tags": { target: BACKEND_ORIGIN, changeOrigin: true },
       "/me": { target: BACKEND_ORIGIN, changeOrigin: true },
       "/login": { target: BACKEND_ORIGIN, changeOrigin: true },
       "/logout": { target: BACKEND_ORIGIN, changeOrigin: true },

@@ -1,0 +1,83 @@
+.editor {
+  margin-top: 2rem;
+}
+
+.heading {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.tagList {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.tagLabel {
+  color: inherit;
+  text-decoration: none;
+}
+
+.tagLabel:hover {
+  text-decoration: underline;
+}
+
+.inputRow {
+  position: relative;
+  /* Matches the Edit metadata / Re-extract metadata button row above (see
+     .actionsLeft in BookDetailPage.module.css) — a fixed value, not a
+     dynamic match: the two live in separate parts of the layout with no
+     shared ancestor to size a track from without either a JS measurement
+     (the kind of fragile cross-element sync this page already moved away
+     from once) or CSS subgrid, more machinery than this visual nicety
+     is worth. Re-measure and update this if that button row's own width
+     changes (e.g. its labels).
+  */
+  max-width: 18rem;
+}
+
+.inputRow input {
+  width: 100%;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.suggestions button:hover {
+  background: var(--surface-hi);
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .suggestions button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}

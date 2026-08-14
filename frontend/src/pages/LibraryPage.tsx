@@ -5,12 +5,14 @@ import {
   DEFAULT_FILTERS,
   deleteBook,
   fetchBooks,
+  fetchTags,
   fetchUsers,
   filtersFromSearchParams,
   filtersToSearchParams,
   hasActiveFilters,
   type BookFilters,
   type BookSummary,
+  type TagOut,
   type UserOut,
 } from "../api";
 import { BookCard } from "../components/BookCard";
@@ -23,6 +25,7 @@ export function LibraryPage() {
 
   const [books, setBooks] = useState<BookSummary[] | null>(null);
   const [users, setUsers] = useState<UserOut[]>([]);
+  const [tags, setTags] = useState<TagOut[]>([]);
 
   function loadBooks() {
     fetchBooks(filtersFromSearchParams(searchParams)).then(setBooks);
@@ -30,6 +33,7 @@ export function LibraryPage() {
 
   useEffect(() => {
     fetchUsers().then(setUsers);
+    fetchTags().then(setTags);
   }, []);
 
   // searchParams (from React Router) is referentially stable until the URL
@@ -56,7 +60,7 @@ export function LibraryPage() {
 
   return (
     <div className={styles.page}>
-      <FilterBar filters={filters} users={users} onChange={updateFilters} onClear={clearFilters} />
+      <FilterBar filters={filters} users={users} tags={tags} onChange={updateFilters} onClear={clearFilters} />
 
       {books === null ? null : books.length === 0 ? (
         <p className={styles.emptyState}>
