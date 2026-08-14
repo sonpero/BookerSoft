@@ -52,6 +52,27 @@ should have two or three accent elements, not ten.
   a long description run on much taller than its neighbor
 - the reader renders book text in black on white; the surrounding chrome stays dark
 
+## Responsive layout
+- Anything sitting beside the sidebar sizes itself to the space actually
+  left over, not to the window width. The sidebar (240px) and a
+  fixed-ish neighbor (a book cover, for example) can eat a very
+  different amount of that width depending on content, so "the window is
+  wide" doesn't mean a given element has room
+- Use a container query for a layout decision that depends on that
+  leftover space — stacking two columns, wrapping a button row — not a
+  viewport media query. A media query only sees window width, which is
+  not what the element actually has to work with once the sidebar and
+  its neighbors have taken their share
+- Media queries are still the right tool for the sidebar-vs-bottom-nav
+  switch itself and for touch-target sizing (see Mobile below) — those
+  are properties of the device/viewport, not of one component's leftover
+  space
+- Nothing beside a fixed- or content-sized neighbor should refuse to
+  shrink (`flex-shrink: 0`, or a size driven by measuring some other
+  element rather than its own box). Give it a relative size with a
+  `min-width` floor instead, so it gives up space gracefully at
+  in-between widths instead of crushing whatever sits next to it
+
 ## Mobile
 - Breakpoint: 768px. Below it, the persistent sidebar is replaced by a
   slim sticky top bar (brand, account) and a fixed bottom navigation bar;
