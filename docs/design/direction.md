@@ -52,6 +52,31 @@ should have two or three accent elements, not ten.
   a long description run on much taller than its neighbor
 - the reader renders book text in black on white; the surrounding chrome stays dark
 
+## Mobile
+- Breakpoint: 768px. Below it, the persistent sidebar is replaced by a
+  slim sticky top bar (brand, account) and a fixed bottom navigation bar;
+  content takes the full width, no side rail
+- Touch targets are at least 44px in both dimensions below the
+  breakpoint — buttons, button-styled links, and form fields (inputs,
+  selects, checkboxes) alike. A visual control can be smaller than that
+  only if it sits inside a larger tappable row or label that itself
+  reaches 44px
+- Nothing essential is `:hover`-only. Any action that only reveals itself
+  on hover on desktop (per-item controls on a card, for example) must be
+  visible unconditionally below the breakpoint — touch has no reliable
+  hover
+- The reader paginates above the breakpoint and scrolls continuously
+  below it; controls that only make sense for pagination (page-turn
+  arrows) aren't shown in scroll mode
+- Check new screens across the full width range down to 320px, not just
+  at the breakpoint — some failures (a fixed `min-width` forcing an
+  element wider than its container, for example) are continuous with
+  viewport width and only show up well below 768px, not right at it
+- Verify at an actual narrow viewport (390px or less), not by shrinking a
+  desktop browser window — a resized browser window has its own minimum
+  width and won't reach real phone widths or reproduce mobile layout
+  behavior
+
 ## Detail page
 Follow `book-detail-reference.png` for structure, this file for style.
 
