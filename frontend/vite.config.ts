@@ -4,15 +4,18 @@ import { fileURLToPath, URL } from "node:url";
 
 const BACKEND_ORIGIN = "http://127.0.0.1:8000";
 
-// A bare GET "/books/123" is the SPA's own book detail page (React Router
-// renders it); every other /books/... request — including DELETE/PATCH on
-// that exact same path — is an API call that belongs to the backend. The
-// method check matters: without it, a DELETE to /books/123 was silently
-// misrouted to Vite's own page serving instead of the backend, and never
-// reached FastAPI at all (which is what "delete doesn't work" turned out
-// to be).
+// A bare GET "/books/123" or "/books/123/read" is the SPA's own book detail
+// or reader page (React Router renders it); every other /books/... request
+// — including DELETE/PATCH on that exact same path — is an API call that
+// belongs to the backend. The method check matters: without it, a DELETE to
+// /books/123 was silently misrouted to Vite's own page serving instead of
+// the backend, and never reached FastAPI at all (which is what "delete
+// doesn't work" turned out to be). Missing the /read variant is what made
+// the reader unreachable under `npm run dev`: GET /books/123/read fell
+// through to the backend proxy below, which has no such route and served
+// back its own (stale, wrong-origin) production build instead.
 function bypassBookDetailRoute(req: { url?: string; method?: string }): string | undefined {
-  if (req.method === "GET" && /^\/books\/\d+$/.test(req.url ?? "")) {
+  if (req.method === "GET" && /^\/books\/\d+(\/read)?$/.test(req.url ?? "")) {
     return req.url;
   }
   return undefined;
