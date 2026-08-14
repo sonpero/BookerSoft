@@ -329,6 +329,9 @@ would duplicate FastAPI.
 The reader remembers the last position per device only, in `localStorage`.
 No server-side reading state, no cross-device sync — deliberately out of scope.
 
+No in-browser PDF reader: PDFs are read on a dedicated e-reader or on a
+desktop, so the download link is enough. Deliberately out of scope.
+
 ## Design references
 Visual references live in `docs/design/`. Read the relevant file when
 working on that screen.
